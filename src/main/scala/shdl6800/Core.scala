@@ -132,9 +132,6 @@ class Core extends Component {
   val end_instr_addr = Bits(16 bits)
   val end_instr_flag = Bits(1 bit)
 
-  val reset_vector = Bits(16 bits)
-  reset_vector := 0
-
   end_instr_addr := 0
   end_instr_flag := 0
   tmp16(7 downto 0) := 0
@@ -164,8 +161,7 @@ class Core extends Component {
         reset_state := 2
       }
       is(2) {
-//        val reset_vector = Bits(16 bits)
-        //reset_vector := Cat(io.Din, tmp8)
+        val reset_vector = Bits(16 bits)
         reset_vector := Cat(tmp8, io.Din)
         end_instr(reset_vector)
         reset_state := 3
@@ -226,7 +222,6 @@ class Core extends Component {
     }
     when(cycle === 2) {
       val new_pc = Bits(16 bits)
-      //new_pc := Cat(io.Din, tmp16(15 downto 8))
       new_pc := Cat(tmp16(15 downto 8), io.Din)
       end_instr(new_pc)
     }
