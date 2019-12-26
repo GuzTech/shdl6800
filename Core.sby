@@ -1,0 +1,21 @@
+[tasks]
+cvr
+bmc
+
+[options]
+cvr: mode cover
+cvr: depth 24
+cvr: multiclock off
+bmc: mode bmc
+bmc: depth 24
+bmc: multiclock off
+
+[engines]
+smtbmc boolector
+
+[script]
+read -sv Core.sv
+prep -top Core
+
+[files]
+Core.sv

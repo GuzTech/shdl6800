@@ -16,7 +16,7 @@
 
 package shdl6800
 
-import spinal.core.{SpinalEnumCraft, _}
+import spinal.core._
 
 class Core extends Component {
   val io = new Bundle {
@@ -231,10 +231,42 @@ class Core extends Component {
   io.RW   := RW
   io.Addr := Addr
   io.Dout := 0
+
+  val f_past_valid = Reg(Bool)
+  f_past_valid := True
+
+  val f_cntr = Reg(UInt(10 bits)) init (0)
+  f_cntr := f_cntr + 1
+
+  import spinal.core.Formal._
+
+  GenerationFlags.formal {
+    when(initstate()) {
+      assume(clockDomain.isResetActive)
+    }.otherwise {
+      when(f_cntr === 20) {
+        cover(instr === B"01111110")
+      }
+      when(past(clockDomain.isResetActive, 4) && !past(clockDomain.isResetActive, 3)
+        && !past(clockDomain.isResetActive, 2) && !past(clockDomain.isResetActive)) {
+        assert(past(Addr, 2) === 0xFFFE)
+        assert(past(Addr) === 0xFFFF)
+        assert(Addr(15 downto 8) === past(io.Din, 2))
+        assert(Addr === pc)
+      }
+    }
+  }
 }
 
 object CoreVerilog {
   def main(args: Array[String]): Unit = {
     SpinalVerilog(new Core).printPruned()
+  }
+}
+
+object CoreVerilogWithFormal {
+  def main(args: Array[String]): Unit = {
+    val config = SpinalConfig(defaultConfigForClockDomains = ClockDomainConfig(resetKind = SYNC, resetActiveLevel = HIGH))
+    config.includeFormal.generateSystemVerilog(new Core())
   }
 }
