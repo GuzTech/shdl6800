@@ -54,9 +54,12 @@ object CoreSim {
                     0x1234 -> 0x7E,
                     0x1235 -> 0xA0,
                     0x1236 -> 0x10,
-                    0xA010 -> 0x01 )
+                    0xA010 -> 0x01,
+                    0xA011 -> 0x7E,
+                    0xA012 -> 0x12,
+                    0xA013 -> 0x34)
 
-      for(i <- 0 to 15) {
+      for(i <- 0 to 20) {
         dut.clockDomain.waitFallingEdge()
         if(mem.contains(dut.io.Addr.toInt)) {
           dut.io.Din #= mem(dut.io.Addr.toInt)
