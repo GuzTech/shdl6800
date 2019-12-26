@@ -39,6 +39,14 @@ class Core extends Component {
   val tmp8  = Reg(Bits(8 bits))
   val tmp16 = Reg(Bits(16 bits))
 
+  // Condition Codes Register
+  val C = Reg(Bits(1 bit)) // Carry
+  val V = Reg(Bits(1 bit)) // Two's complement overflow indicator
+  val Z = Reg(Bits(1 bit)) // Zero indicator
+  val N = Reg(Bits(1 bit)) // Negative indicator
+  val I = Reg(Bits(1 bit)) // Interrupt mask
+  val H = Reg(Bits(1 bit)) // Half carry
+
   // Buses
   val src8_1   = Bits(8 bits)
   val src8_2   = Bits(8 bits)
@@ -196,10 +204,36 @@ class Core extends Component {
 
   def execute(): Unit = {
     switch(instr) {
-      is(B"00000001") {
+      is(0x01) {
+        // B"00000001"
         NOP()
       }
-      is(B"01111110") {
+      is(0x0B) {
+        // B"00001011"
+        SEV()
+      }
+      is(0x0D) {
+        // B"00001101"
+        SEC()
+      }
+      is(0x0F) {
+        // B"00001111"
+        SEI()
+      }
+      is(0x20) {
+        // B"00100000"
+        BRA()
+      }
+      is(0x28) {
+        // B"00101000"
+        BVC()
+      }
+      is(0x29) {
+        // B"00101001"
+        BVS()
+      }
+      is(0x7E) {
+        // B"01111110"
         JMPext()
       }
       default {
@@ -210,6 +244,85 @@ class Core extends Component {
 
   def NOP(): Unit = {
     end_instr(pc)
+  }
+
+  def SEC(): Unit = {
+    when(cycle === 1) {
+      C := 1
+      end_instr(pc)
+    }
+  }
+
+  def SEI(): Unit = {
+    when(cycle === 1) {
+      I := 1
+      end_instr(pc)
+    }
+  }
+
+  def SEV(): Unit = {
+    when(cycle === 1) {
+      V := 1
+      end_instr(pc)
+    }
+  }
+
+  def BRA(): Unit = {
+    when(cycle === 1) {
+      tmp8  := io.Din
+      cycle := 2
+    }
+    when(cycle === 2) {
+      tmp8  := (tmp8.asUInt + 2).asBits
+      cycle := 3
+    }
+    when(cycle === 3) {
+      pc   := (pc.asUInt + tmp8.asUInt).asBits
+      Addr := (pc.asUInt + tmp8.asUInt).asBits
+      end_instr(pc)
+    }
+  }
+
+  def BVC(): Unit = {
+    when(cycle === 1) {
+      tmp8  := io.Din
+      cycle := 2
+    }
+    when(cycle === 2) {
+      tmp8  := (tmp8.asUInt + 2).asBits
+      cycle := 3
+    }
+    when(cycle === 3) {
+      when(V === 0) {
+        pc   := (pc.asUInt + tmp8.asUInt).asBits
+        Addr := (pc.asUInt + tmp8.asUInt).asBits
+      } otherwise {
+        pc   := (pc.asUInt + 2).asBits
+        Addr := (pc.asUInt + 2).asBits
+      }
+      end_instr(pc)
+    }
+  }
+
+  def BVS(): Unit = {
+    when(cycle === 1) {
+      tmp8  := io.Din
+      cycle := 2
+    }
+    when(cycle === 2) {
+      tmp8  := (tmp8.asUInt + 2).asBits
+      cycle := 3
+    }
+    when(cycle === 3) {
+      when(V === 1) {
+        pc   := (pc.asUInt + tmp8.asUInt).asBits
+        Addr := (pc.asUInt + tmp8.asUInt).asBits
+      } otherwise {
+        pc   := (pc.asUInt + 2).asBits
+        Addr := (pc.asUInt + 2).asBits
+      }
+      end_instr(pc)
+    }
   }
 
   def JMPext(): Unit = {

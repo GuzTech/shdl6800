@@ -49,17 +49,19 @@ object CoreSim {
         }
       }
 
-      val mem = Map(0xFFFE -> 0x12,
-                    0xFFFF -> 0x34,
-                    0x1234 -> 0x7E,
-                    0x1235 -> 0xA0,
-                    0x1236 -> 0x10,
-                    0xA010 -> 0x01,
-                    0xA011 -> 0x7E,
-                    0xA012 -> 0x12,
-                    0xA013 -> 0x34)
+      val mem = Map(0xFFFE -> 0x12, // Reset vector high
+                    0xFFFF -> 0x34, // Reset vector low
+                    0x1234 -> 0x7E, // JMP ext
+                    0x1235 -> 0xA0, // Address high
+                    0x1236 -> 0x10, // Address low
+                    0xA010 -> 0x20, // BRA
+                    0xA011 -> 0x00, // rel = 0
+                    0xA012 -> 0x01, // NOP
+                    0xA013 -> 0x7E, // JMP ext
+                    0xA014 -> 0x12, // Address high
+                    0xA015 -> 0x34) // Address low
 
-      for(i <- 0 to 20) {
+      for(i <- 0 to 30) {
         dut.clockDomain.waitFallingEdge()
         if(mem.contains(dut.io.Addr.toInt)) {
           dut.io.Din #= mem(dut.io.Addr.toInt)
