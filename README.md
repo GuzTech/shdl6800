@@ -11,7 +11,7 @@ I also have some experience with SpinalHDL, and while watching his videos, it lo
 
 ## Status
 
-As of this writing, I have somewhat caught up with [Part 3](https://www.youtube.com/watch?v=aLQqOxnVMOQ), but I have not implemented the formal verification part yet.
+As of this writing, I have somewhat caught up with [Part 3](https://www.youtube.com/watch?v=aLQqOxnVMOQ), and the initial formal verification part is also implemented.
 
 ## License
 
