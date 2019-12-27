@@ -303,18 +303,20 @@ class Core extends Component {
   def BRA(): Unit = {
     when(cycle === 1) {
       tmp8  := io.Din
-      cycle := 2
-    }
-    when(cycle === 2) {
+
       // At this point, Addr is already incremented by one compared
       // to the address of the instruction itself, so only increment
       // by one to match the +2 in the documentation.
-      tmp8  := (tmp8.asUInt + 1).asBits
+      tmp16 := (pc.asSInt + 1).asBits
+      cycle := 2
+    }
+    when(cycle === 2) {
+      tmp16 := (tmp16.asSInt + tmp8.asSInt).asBits
       cycle := 3
     }
     when(cycle === 3) {
-      pc   := (pc.asUInt + tmp8.asUInt).asBits
-      Addr := (pc.asUInt + tmp8.asUInt).asBits
+      pc   := tmp16
+      Addr := tmp16
       end_instr(pc)
     }
   }
@@ -322,19 +324,27 @@ class Core extends Component {
   def BVC(): Unit = {
     when(cycle === 1) {
       tmp8  := io.Din
-      cycle := 2
-    }
-    when(cycle === 2) {
+
       // At this point, Addr is already incremented by one compared
       // to the address of the instruction itself, so only increment
       // by one to match the +2 in the documentation.
-      tmp8  := (tmp8.asUInt + 1).asBits
+      tmp16 := (pc.asSInt + 1).asBits
+      cycle := 2
+    }
+    when(cycle === 2) {
+      tmp16 := (tmp16.asSInt + tmp8.asSInt).asBits
       cycle := 3
     }
     when(cycle === 3) {
       when(V === 0) {
-        pc   := (pc.asUInt + tmp8.asUInt).asBits
-        Addr := (pc.asUInt + tmp8.asUInt).asBits
+        pc   := tmp16
+        Addr := tmp16
+      } otherwise {
+        // At this point, pc is already incremented by one compared
+        // to the address of the instruction itself, so only increment
+        // by one to match the +2 in the documentation.
+        pc   := (pc.asSInt + 1).asBits
+        Addr := (pc.asSInt + 1).asBits
       }
       end_instr(pc)
     }
@@ -343,19 +353,27 @@ class Core extends Component {
   def BVS(): Unit = {
     when(cycle === 1) {
       tmp8  := io.Din
-      cycle := 2
-    }
-    when(cycle === 2) {
+
       // At this point, Addr is already incremented by one compared
       // to the address of the instruction itself, so only increment
       // by one to match the +2 in the documentation.
-      tmp8  := (tmp8.asUInt + 1).asBits
+      tmp16 := (pc.asSInt + 1).asBits
+      cycle := 2
+    }
+    when(cycle === 2) {
+      tmp16 := (tmp16.asSInt + tmp8.asSInt).asBits
       cycle := 3
     }
     when(cycle === 3) {
       when(V === 1) {
-        pc   := (pc.asUInt + tmp8.asUInt).asBits
-        Addr := (pc.asUInt + tmp8.asUInt).asBits
+        pc   := tmp16
+        Addr := tmp16
+      } otherwise {
+        // At this point, pc is already incremented by one compared
+        // to the address of the instruction itself, so only increment
+        // by one to match the +2 in the documentation.
+        pc   := (pc.asSInt + 1).asBits
+        Addr := (pc.asSInt + 1).asBits
       }
       end_instr(pc)
     }
@@ -431,16 +449,37 @@ class Core extends Component {
         }
       }
 
-      // Check BRA instruction
-      when(!past(clockDomain.isResetActive, 4) && !past(clockDomain.isResetActive, 3)
-        && !past(clockDomain.isResetActive, 2) && !past(clockDomain.isResetActive)
-        && past(instr, 4) === 0x20)
+      // Check branch instructions
+      when(!past(clockDomain.isResetActive) && past(reset_state) === 3 && past(cycle) === 3)
       {
-        //
-        // This generates $past() commands outside a clocked process, so we cannot test it yet.
-        //
+        // Check BRA instruction
+        when(past(instr, 3) === 0x20) {
+          // We have to resize to make all signals the same size, or else the $past statement will be outside clocked
+          // always blocks.
+          assert(io.Addr === (past(io.Din.asSInt.resize(Addr.getWidth), 3) + past(pc.asSInt.resize(Addr.getWidth), 4) + 2).asBits)
+        }
 
-        //assert(Addr === (past(io.Din, 2).asUInt + past(pc, 4).asUInt).asBits)
+        // Check BVC instruction
+        when(past(instr, 3) === 0x28) {
+          when(past(V) === 0) {
+            // We have to resize to make all signals the same size, or else the $past statement will be outside clocked
+            // always blocks.
+            assert(io.Addr === (past(io.Din.asSInt.resize(Addr.getWidth), 3) + past(pc.asSInt.resize(Addr.getWidth), 4) + 2).asBits)
+          } otherwise {
+            assert(io.Addr === (past(pc.asSInt.resize(Addr.getWidth), 4) + 2).asBits)
+          }
+        }
+
+        // Check BVS instruction
+        when(past(instr, 3) === 0x29) {
+          when(past(V) === 1) {
+            // We have to resize to make all signals the same size, or else the $past statement will be outside clocked
+            // always blocks.
+            assert(io.Addr === (past(io.Din.asSInt.resize(Addr.getWidth), 3) + past(pc.asSInt.resize(Addr.getWidth), 4) + 2).asBits)
+          } otherwise {
+            assert(io.Addr === (past(pc.asSInt.resize(Addr.getWidth), 4) + 2).asBits)
+          }
+        }
       }
     }
   }
