@@ -13,6 +13,13 @@ I also have some experience with SpinalHDL, and while watching his videos, it lo
 
 As of this writing, I have somewhat caught up with [Part 3](https://www.youtube.com/watch?v=aLQqOxnVMOQ), and the initial formal verification part is also implemented.
 
+The following instructions have been implemented:
+
+- NOP
+- CLC, CLV, CLI, SEC, SEV, and SEI (with formal)
+- JMP (ext)
+- BRA, BVC, and BVS
+
 ## License
 
 shdl6800 is free and open hardware and is licensed under the [ISC licence](http://en.wikipedia.org/wiki/ISC_license).
