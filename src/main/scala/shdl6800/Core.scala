@@ -315,9 +315,7 @@ class Core extends Component {
       cycle := 3
     }
     when(cycle === 3) {
-      pc   := tmp16
-      Addr := tmp16
-      end_instr(pc)
+      end_instr(tmp16)
     }
   }
 
@@ -336,17 +334,17 @@ class Core extends Component {
       cycle := 3
     }
     when(cycle === 3) {
+      val new_pc = Bits(16 bits)
+
       when(V === 0) {
-        pc   := tmp16
-        Addr := tmp16
+        new_pc := tmp16
       } otherwise {
         // At this point, pc is already incremented by one compared
         // to the address of the instruction itself, so only increment
         // by one to match the +2 in the documentation.
-        pc   := (pc.asSInt + 1).asBits
-        Addr := (pc.asSInt + 1).asBits
+        new_pc := (pc.asSInt + 1).asBits
       }
-      end_instr(pc)
+      end_instr(new_pc)
     }
   }
 
@@ -365,25 +363,25 @@ class Core extends Component {
       cycle := 3
     }
     when(cycle === 3) {
+      val new_pc = Bits(16 bits)
+
       when(V === 1) {
-        pc   := tmp16
-        Addr := tmp16
+        new_pc := tmp16
       } otherwise {
         // At this point, pc is already incremented by one compared
         // to the address of the instruction itself, so only increment
         // by one to match the +2 in the documentation.
-        pc   := (pc.asSInt + 1).asBits
-        Addr := (pc.asSInt + 1).asBits
+        new_pc := (pc.asSInt + 1).asBits
       }
-      end_instr(pc)
+      end_instr(new_pc)
     }
   }
 
   def JMPext(): Unit = {
     when(cycle === 1) {
       tmp16(15 downto 8) := io.Din
-      pc                 := (pc.asUInt + 1).asBits
-      Addr               := (pc.asUInt + 1).asBits
+      pc                 := (pc.asSInt + 1).asBits
+      Addr               := (pc.asSInt + 1).asBits
       RW                 := 1
       cycle              := 2
     }
