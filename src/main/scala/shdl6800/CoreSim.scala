@@ -55,11 +55,17 @@ object CoreSim {
                     0x1235 -> 0xA0, // Address high
                     0x1236 -> 0x10, // Address low
                     0xA010 -> 0x20, // BRA
-                    0xA011 -> 0x00, // rel = 0
+                    0xA011 -> 0x01, // rel = 1
                     0xA012 -> 0x01, // NOP
-                    0xA013 -> 0x7E, // JMP ext
-                    0xA014 -> 0x12, // Address high
-                    0xA015 -> 0x34) // Address low
+                    0xA013 -> 0x0A, // Clear overflow flag
+                    0xA014 -> 0x29, // BVS
+                    0xA015 -> 0x10, // rel = 16
+                    0xA016 -> 0x28, // BVC
+                    0xA017 -> 0x01, // rel = 1
+                    0xA018 -> 0x01, // NOP
+                    0xA019 -> 0x7E, // JMP ext
+                    0xA01A -> 0x12, // Address high
+                    0xA01B -> 0x34) // Address low
 
       for(i <- 0 to 30) {
         dut.clockDomain.waitFallingEdge()
