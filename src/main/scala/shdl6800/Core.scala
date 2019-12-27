@@ -448,8 +448,7 @@ class Core extends Component {
       }
 
       // Check branch instructions
-      when(!past(clockDomain.isResetActive) && past(reset_state) === 3 && past(cycle) === 3)
-      {
+      when(!past(clockDomain.isResetActive) && past(reset_state) === 3 && past(cycle) === 3) {
         // Check BRA instruction
         when(past(instr, 3) === 0x20) {
           // We have to resize to make all signals the same size, or else the $past statement will be outside clocked
@@ -477,6 +476,14 @@ class Core extends Component {
           } otherwise {
             assert(io.Addr === (past(pc.asSInt.resize(Addr.getWidth), 4) + 2).asBits)
           }
+        }
+      }
+
+      // Check jump instructions
+      when(!past(clockDomain.isResetActive) && past(reset_state) === 3 && past(cycle) === 2) {
+        // Check JMP ext instruction
+        when(past(instr, 2) === 0x7E) {
+          assert(io.Addr === (Cat(past(io.Din, 2), past(io.Din))))
         }
       }
     }
