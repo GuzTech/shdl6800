@@ -208,13 +208,25 @@ class Core extends Component {
         // B"00000001"
         NOP()
       }
+      is(0x0A) {
+        // B"00001010"
+        CLV()
+      }
       is(0x0B) {
         // B"00001011"
         SEV()
       }
+      is(0x0C) {
+        // B"00001100"
+        CLC()
+      }
       is(0x0D) {
         // B"00001101"
         SEC()
+      }
+      is(0x0E) {
+        // B"00001110"
+        CLI()
       }
       is(0x0F) {
         // B"00001111"
@@ -246,6 +258,27 @@ class Core extends Component {
     end_instr(pc)
   }
 
+  def CLC(): Unit = {
+    when(cycle === 1) {
+      C := 0
+      end_instr(pc)
+    }
+  }
+
+  def CLI(): Unit = {
+    when(cycle === 1) {
+      I := 0
+      end_instr(pc)
+    }
+  }
+
+  def CLV(): Unit = {
+    when(cycle === 1) {
+      V := 0
+      end_instr(pc)
+    }
+  }
+
   def SEC(): Unit = {
     when(cycle === 1) {
       C := 1
@@ -273,7 +306,10 @@ class Core extends Component {
       cycle := 2
     }
     when(cycle === 2) {
-      tmp8  := (tmp8.asUInt + 2).asBits
+      // At this point, Addr is already incremented by one compared
+      // to the address of the instruction itself, so only increment
+      // by one to match the +2 in the documentation.
+      tmp8  := (tmp8.asUInt + 1).asBits
       cycle := 3
     }
     when(cycle === 3) {
@@ -289,16 +325,16 @@ class Core extends Component {
       cycle := 2
     }
     when(cycle === 2) {
-      tmp8  := (tmp8.asUInt + 2).asBits
+      // At this point, Addr is already incremented by one compared
+      // to the address of the instruction itself, so only increment
+      // by one to match the +2 in the documentation.
+      tmp8  := (tmp8.asUInt + 1).asBits
       cycle := 3
     }
     when(cycle === 3) {
       when(V === 0) {
         pc   := (pc.asUInt + tmp8.asUInt).asBits
         Addr := (pc.asUInt + tmp8.asUInt).asBits
-      } otherwise {
-        pc   := (pc.asUInt + 2).asBits
-        Addr := (pc.asUInt + 2).asBits
       }
       end_instr(pc)
     }
@@ -310,16 +346,16 @@ class Core extends Component {
       cycle := 2
     }
     when(cycle === 2) {
-      tmp8  := (tmp8.asUInt + 2).asBits
+      // At this point, Addr is already incremented by one compared
+      // to the address of the instruction itself, so only increment
+      // by one to match the +2 in the documentation.
+      tmp8  := (tmp8.asUInt + 1).asBits
       cycle := 3
     }
     when(cycle === 3) {
       when(V === 1) {
         pc   := (pc.asUInt + tmp8.asUInt).asBits
         Addr := (pc.asUInt + tmp8.asUInt).asBits
-      } otherwise {
-        pc   := (pc.asUInt + 2).asBits
-        Addr := (pc.asUInt + 2).asBits
       }
       end_instr(pc)
     }
@@ -361,11 +397,50 @@ class Core extends Component {
         cover(instr === B"01111110")
       }
       when(past(clockDomain.isResetActive, 4) && !past(clockDomain.isResetActive, 3)
-        && !past(clockDomain.isResetActive, 2) && !past(clockDomain.isResetActive)) {
+        && !past(clockDomain.isResetActive, 2) && !past(clockDomain.isResetActive))
+      {
         assert(past(Addr, 2) === 0xFFFE)
         assert(past(Addr) === 0xFFFF)
         assert(Addr(15 downto 8) === past(io.Din, 2))
         assert(Addr === pc)
+      }
+
+      // Check CLC, CLV, and CLI instructions
+      when(!past(clockDomain.isResetActive) && past(reset_state) === 3 && past(cycle) === 1) {
+        when(past(instr) === 0x0C) {
+          assert(C === 0)
+        }
+        when(past(instr) === 0x0E) {
+          assert(I === 0)
+        }
+        when(past(instr) === 0x0A) {
+          assert(V === 0)
+        }
+      }
+
+      // Check SEC, SEV, and SEI instructions
+      when(!past(clockDomain.isResetActive) && past(reset_state) === 3 && past(cycle) === 1) {
+        when(past(instr) === 0x0D) {
+          assert(C === 1)
+        }
+        when(past(instr) === 0x0F) {
+          assert(I === 1)
+        }
+        when(past(instr) === 0x0B) {
+          assert(V === 1)
+        }
+      }
+
+      // Check BRA instruction
+      when(!past(clockDomain.isResetActive, 4) && !past(clockDomain.isResetActive, 3)
+        && !past(clockDomain.isResetActive, 2) && !past(clockDomain.isResetActive)
+        && past(instr, 4) === 0x20)
+      {
+        //
+        // This generates $past() commands outside a clocked process, so we cannot test it yet.
+        //
+
+        //assert(Addr === (past(io.Din, 2).asUInt + past(pc, 4).asUInt).asBits)
       }
     }
   }
