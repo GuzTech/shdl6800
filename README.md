@@ -18,7 +18,21 @@ The following instructions have been implemented:
 - NOP
 - CLC, CLV, CLI, SEC, SEV, and SEI (with formal)
 - JMP (ext)
-- BRA, BVC, and BVS
+- BRA, BVC, and BVS (with formal)
+
+Formal verification requires the free and open-source [SymbiYosys](https://symbiyosys.readthedocs.io/en/latest/quickstart.html) tools. Once installed, first run the `main` function of the `CoreVerilogWithFormal` object so that it generates a SystemVerilog file with the formal proofs in them:
+
+```
+sbt "runMain shdl6800.CoreVerilogWithFormal"
+```
+
+Then simply run SymbiYosys:
+
+```
+sby -f Core.sby
+```
+
+As of this writing, there is a bug in SpinalHDL several `$past()` statements are generated outside clocked `always` blocks. You have to manually substitute the signals inside the `assert` statements to fix this.
 
 ## License
 
