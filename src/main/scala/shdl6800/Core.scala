@@ -125,7 +125,7 @@ class Core extends Component {
 
   def dst_bus_setup[T <: SpinalEnum](reg_map: Map[SpinalEnumElement[T], (Bits, Boolean)], bus: Bits, bitmap: Bits): Unit = {
     reg_map.foreach {case (e, reg) => if(reg._2) { if(bitmap(e.position) == True) {reg._1 := bus} }}
-}
+  }
 
   src_bus_setup(reg8_map, src8_1, src8_1_select)
   src_bus_setup(reg8_map, src8_2, src8_2_select)
@@ -204,53 +204,41 @@ class Core extends Component {
 
   def execute(): Unit = {
     switch(instr) {
-      is(0x01) {
-        // B"00000001"
-        NOP()
-      }
-      is(0x0A) {
-        // B"00001010"
-        CLV()
-      }
-      is(0x0B) {
-        // B"00001011"
-        SEV()
-      }
-      is(0x0C) {
-        // B"00001100"
-        CLC()
-      }
-      is(0x0D) {
-        // B"00001101"
-        SEC()
-      }
-      is(0x0E) {
-        // B"00001110"
-        CLI()
-      }
-      is(0x0F) {
-        // B"00001111"
-        SEI()
-      }
-      is(0x20) {
-        // B"00100000"
-        BRA()
-      }
-      is(0x28) {
-        // B"00101000"
-        BVC()
-      }
-      is(0x29) {
-        // B"00101001"
-        BVS()
-      }
-      is(0x7E) {
-        // B"01111110"
-        JMPext()
-      }
-      default {
-        end_instr(pc)
-      }
+      is(0x01) { NOP() }
+      is(0x0A) { CLV() }
+      is(0x0B) { SEV() }
+      is(0x0C) { CLC() }
+      is(0x0D) { SEC() }
+      is(0x0E) { CLI() }
+      is(0x0F) { SEI() }
+      is(0x1B) { ABA() }
+      is(0x20) { BRA() }
+      is(0x26) { BNE() }
+      is(0x27) { BEQ() }
+      is(0x28) { BVC() }
+      is(0x29) { BVS() }
+      is(0x7E) { JMPext() }
+      default  { end_instr(pc) }
+    }
+  }
+
+  def ABA(): Unit = {
+    when(cycle === 1) {
+      val result = SInt(9 bits)
+      result := (a.asSInt.resize(result.getWidth) + b.asSInt.resize(result.getWidth))
+      a      := result(result.high - 1 downto 0).asBits
+
+      // Update flags
+      Z := (result(result.high - 1 downto 0) === 0).asBits
+      N := result(result.high - 1).asBits
+      C := result.msb.asBits
+
+      // Not finished, needed for SpinalHDL to compile
+      V := 0
+      H := 0
+      b := 0
+
+      end_instr(pc)
     }
   }
 
@@ -316,6 +304,64 @@ class Core extends Component {
     }
     when(cycle === 3) {
       end_instr(tmp16)
+    }
+  }
+
+  def BNE(): Unit = {
+    when(cycle === 1) {
+      tmp8  := io.Din
+
+      // At this point, Addr is already incremented by one compared
+      // to the address of the instruction itself, so only increment
+      // by one to match the +2 in the documentation.
+      tmp16 := (pc.asSInt + 1).asBits
+      cycle := 2
+    }
+    when(cycle === 2) {
+      tmp16 := (tmp16.asSInt + tmp8.asSInt).asBits
+      cycle := 3
+    }
+    when(cycle === 3) {
+      val new_pc = Bits(16 bits)
+
+      when(Z === 0) {
+        new_pc := tmp16
+      } otherwise {
+        // At this point, pc is already incremented by one compared
+        // to the address of the instruction itself, so only increment
+        // by one to match the +2 in the documentation.
+        new_pc := (pc.asSInt + 1).asBits
+      }
+      end_instr(new_pc)
+    }
+  }
+
+  def BEQ(): Unit = {
+    when(cycle === 1) {
+      tmp8  := io.Din
+
+      // At this point, Addr is already incremented by one compared
+      // to the address of the instruction itself, so only increment
+      // by one to match the +2 in the documentation.
+      tmp16 := (pc.asSInt + 1).asBits
+      cycle := 2
+    }
+    when(cycle === 2) {
+      tmp16 := (tmp16.asSInt + tmp8.asSInt).asBits
+      cycle := 3
+    }
+    when(cycle === 3) {
+      val new_pc = Bits(16 bits)
+
+      when(Z === 1) {
+        new_pc := tmp16
+      } otherwise {
+        // At this point, pc is already incremented by one compared
+        // to the address of the instruction itself, so only increment
+        // by one to match the +2 in the documentation.
+        new_pc := (pc.asSInt + 1).asBits
+      }
+      end_instr(new_pc)
     }
   }
 
@@ -449,11 +495,33 @@ class Core extends Component {
 
       // Check branch instructions
       when(!past(clockDomain.isResetActive) && past(reset_state) === 3 && past(cycle) === 3) {
-        // Check BRA instruction
-        when(past(instr, 3) === 0x20) {
-          // We have to resize to make all signals the same size, or else the $past statement will be outside clocked
-          // always blocks.
-          assert(io.Addr === (past(io.Din.asSInt.resize(Addr.getWidth), 3) + past(pc.asSInt.resize(Addr.getWidth), 4) + 2).asBits)
+                // Check BRA instruction
+                when(past(instr, 3) === 0x20) {
+                  // We have to resize to make all signals the same size, or else the $past statement will be outside clocked
+                  // always blocks.
+                  assert(io.Addr === (past(io.Din.asSInt.resize(Addr.getWidth), 3) + past(pc.asSInt.resize(Addr.getWidth), 4) + 2).asBits)
+                }
+
+        // Check BNE instruction
+        when(past(instr, 3) === 0x26) {
+          when(past(Z) === 0) {
+            // We have to resize to make all signals the same size, or else the $past statement will be outside clocked
+            // always blocks.
+            assert(io.Addr === (past(io.Din.asSInt.resize(Addr.getWidth), 3) + past(pc.asSInt.resize(Addr.getWidth), 4) + 2).asBits)
+          } otherwise {
+            assert(io.Addr === (past(pc.asSInt.resize(Addr.getWidth), 4) + 2).asBits)
+          }
+        }
+
+        // Check BEQ instruction
+        when(past(instr, 3) === 0x27) {
+          when(past(Z) === 1) {
+            // We have to resize to make all signals the same size, or else the $past statement will be outside clocked
+            // always blocks.
+            assert(io.Addr === (past(io.Din.asSInt.resize(Addr.getWidth), 3) + past(pc.asSInt.resize(Addr.getWidth), 4) + 2).asBits)
+          } otherwise {
+            assert(io.Addr === (past(pc.asSInt.resize(Addr.getWidth), 4) + 2).asBits)
+          }
         }
 
         // Check BVC instruction
