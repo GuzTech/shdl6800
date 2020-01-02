@@ -163,6 +163,12 @@ case class Core(verification: Option[Verification] = None) extends Component {
   incdec16       := 0
   src16_select   := Reg16.NONE
   src16_write    := Reg16.NONE().asBits
+  src8_1_select  := Reg8.NONE
+  src8_2_select  := Reg8.NONE
+  a              := 0
+  b              := 0
+  x              := 0
+  sp             := 0
 
   src_bus_setup(reg8_map, src8_1, src8_1_select)
   src_bus_setup(reg8_map, src8_2, src8_2_select)
@@ -312,29 +318,51 @@ case class Core(verification: Option[Verification] = None) extends Component {
 object CoreVerilog {
   def main(args: Array[String]): Unit = {
     if(args.length > 0) {
+      import spinal.core.Formal._
       import shdl6800.formal._
 
       val config = SpinalConfig(defaultConfigForClockDomains = ClockDomainConfig(resetKind = SYNC, resetActiveLevel = HIGH))
-      config.includeFormal.generateSystemVerilog{
+      config.includeFormal.generateSystemVerilog {
         val verification: Option[Verification] = args(0) match {
           case "jmp" => Some(new Formal_JMP())
           case _     => None
         }
         val core: Core = new Core(verification) {
           if(verification.isDefined) {
-            val cycle2 = Reg(UInt(6 bits))
+            // Cycle counter
+            val cycle2 = Reg(UInt(6 bits)) init(0)
             cycle2 := (cycle2 + 1)
 
-            when(cycle2 === 20) {
-              cover(verification.get.valid(instr))
-              assume(verification.get.valid(instr))
+            // Force a reset
+            when(initstate()) {
+              assume(clockDomain.isResetActive)
+
+              /* This is needed because the model checker can start
+               * with the state where a snapshot is already taken.*/
+              assume(~formalData.snapshot_taken)
+            } otherwise {
+              when(cycle2 === 20) {
+                cover(verification.get.valid(instr))
+                assume(verification.get.valid(instr))
+              }
+
+              // Verify that reset does what it's supposed to
+              when( past(clockDomain.isResetActive, 4) && ~past(clockDomain.isResetActive, 3) &&
+                   ~past(clockDomain.isResetActive, 2) && ~past(clockDomain.isResetActive, 1))
+              {
+                assert(past(Addr, 2) === 0xFFFE)
+                assert(past(Addr, 1) === 0xFFFF)
+                assert(Addr(15 downto 8) === past(io.Din, 2))
+                assert(Addr( 7 downto 0) === past(io.Din, 1))
+                assert(Addr === pc)
+              }
             }
           }
         }
 
         core.setDefinitionName("Core")
         core
-      }
+      }.printPruned()
     } else {
       SpinalVerilog(new Core).printPruned()
     }

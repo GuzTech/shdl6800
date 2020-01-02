@@ -34,6 +34,6 @@ class Formal_JMP extends Verification {
     assert(data.addresses_read === 2)
     assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
     assert(data.read_addr(1) === data.plus16(data.pre_pc.asSInt, 2).asBits)
-    assert(data.post_pc === Cat(data.read_data(1), data.read_data(0)))
+    assert(data.post_pc === Cat(data.read_data(0), data.read_data(1)))
   }
 }

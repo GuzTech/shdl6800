@@ -29,10 +29,10 @@ class Verification {
 case class FormalData(verification: Option[Verification]) {
   val snapshot_taken    = Reg(Bool) init(False)
 
-  val instr             = Reg(Bits(8 bits)) init(0)
+  val instr             = Reg(Bits(8 bits))  init(0)
 
-  val pre_a             = Reg(Bits(8 bits)) init(0)
-  val pre_b             = Reg(Bits(8 bits)) init(0)
+  val pre_a             = Reg(Bits(8 bits))  init(0)
+  val pre_b             = Reg(Bits(8 bits))  init(0)
   val pre_x             = Reg(Bits(16 bits)) init(0)
   val pre_sp            = Reg(Bits(16 bits)) init(0)
   val pre_pc            = Reg(Bits(16 bits)) init(0)
@@ -43,13 +43,13 @@ case class FormalData(verification: Option[Verification]) {
   val post_sp           = Bits(16 bits)
   val post_pc           = Bits(16 bits)
 
-  val addresses_written = Reg(UInt(3 bits))
-  val write_addr        = Reg(Vec(Bits, 8))
-  val write_data        = Reg(Vec(Bits, 8))
+  val addresses_written = Reg(UInt(3 bits)) init(0)
+  val write_addr        = Vec(Reg(Bits), 8)
+  val write_data        = Vec(Reg(Bits), 8)
 
   val addresses_read    = Reg(UInt(3 bits))
-  val read_addr         = Reg(Vec(Bits, 8))
-  val read_data         = Reg(Vec(Bits, 8))
+  val read_addr         = Vec(Reg(Bits), 8)
+  val read_data         = Vec(Reg(Bits), 8)
 
   // Assign default values to prevent compiler detecting latches.
   post_a  := 0
