@@ -32,6 +32,7 @@ package shdl6800
 
 import shdl6800.formal.{FormalData, Verification}
 import spinal.core._
+import spinal.core.sim.{SimConfig, fork, sleep}
 
 /* Values for specifying an 8-bit register for things
  * like sources and destinations. Can also specify the
@@ -318,51 +319,97 @@ case class Core(verification: Option[Verification] = None) extends Component {
 object Core {
   def main(args: Array[String]): Unit = {
     if(args.length > 0) {
-      import spinal.core.Formal._
-      import shdl6800.formal._
+      if (args(0) == "sim") {
+        import spinal.core.sim._
 
-      val config = SpinalConfig(defaultConfigForClockDomains = ClockDomainConfig(resetKind = SYNC, resetActiveLevel = HIGH))
-      config.includeFormal.generateSystemVerilog {
-        val verification: Option[Verification] = args(0) match {
-          case "jmp" => Some(new Formal_JMP())
-          case _     => None
-        }
-        val core: Core = new Core(verification) {
-          if(verification.isDefined) {
-            // Cycle counter
-            val cycle2 = Reg(UInt(6 bits)) init(0)
-            cycle2 := (cycle2 + 1)
+        val spinalConfig = SpinalConfig(defaultClockDomainFrequency = FixedFrequency(1 MHz))
 
-            // Force a reset
-            when(initstate()) {
-              assume(clockDomain.isResetActive)
+        SimConfig
+          .withConfig(spinalConfig)
+          .withWave
+          .allOptimisation
+          .compile(new Core)
+          .doSim { dut =>
+            // Reset generation
+            fork {
+              dut.clockDomain.assertReset()
+              sleep(10)
+              dut.clockDomain.deassertReset()
+            }
 
-              /* This is needed because the model checker can start
-               * with the state where a snapshot is already taken.*/
-              assume(~formalData.snapshot_taken)
-            } otherwise {
-              when(cycle2 === 20) {
-                cover(verification.get.valid(instr))
-                assume(verification.get.valid(instr))
+            // Clock generation
+            fork {
+              dut.clockDomain.fallingEdge()
+              sleep(5)
+              while (true) {
+                dut.clockDomain.clockToggle()
+                sleep(5)
               }
+            }
 
-              // Verify that reset does what it's supposed to
-              when( past(clockDomain.isResetActive, 4) && ~past(clockDomain.isResetActive, 3) &&
-                   ~past(clockDomain.isResetActive, 2) && ~past(clockDomain.isResetActive, 1))
-              {
-                assert(past(Addr, 2) === 0xFFFE)
-                assert(past(Addr, 1) === 0xFFFF)
-                assert(Addr(15 downto 8) === past(io.Din, 2))
-                assert(Addr( 7 downto 0) === past(io.Din, 1))
-                assert(Addr === pc)
+            val mem = Map(
+              0xFFFE -> 0x12, // Reset vector high
+              0xFFFF -> 0x34, // Reset vector low
+              0x1234 -> 0x7E, // JMP ext
+              0x1235 -> 0xA0, // Address high
+              0x1236 -> 0x10, // Address low
+              0xA010 -> 0x01) // NOP
+
+            for (i <- 0 to 16) {
+              dut.clockDomain.waitFallingEdge()
+              if (mem.contains(dut.io.Addr.toInt)) {
+                dut.io.Din #= mem(dut.io.Addr.toInt)
+              } else {
+                dut.io.Din #= 0xFF
               }
             }
           }
-        }
+      } else {
+        import spinal.core.Formal._
+        import shdl6800.formal._
 
-        core.setDefinitionName("Core")
-        core
-      }.printPruned()
+        val config = SpinalConfig(defaultConfigForClockDomains = ClockDomainConfig(resetKind = SYNC, resetActiveLevel = HIGH))
+        config.includeFormal.generateSystemVerilog {
+          val verification: Option[Verification] = args(0) match {
+            case "jmp" => Some(new Formal_JMP())
+            case _ => None
+          }
+          val core: Core = new Core(verification) {
+            if (verification.isDefined) {
+              // Cycle counter
+              val cycle2 = Reg(UInt(6 bits)) init (0)
+              cycle2 := (cycle2 + 1)
+
+              // Force a reset
+              when(initstate()) {
+                assume(clockDomain.isResetActive)
+
+                /* This is needed because the model checker can start
+                 * with the state where a snapshot is already taken.*/
+                assume(~formalData.snapshot_taken)
+              } otherwise {
+                when(cycle2 === 20) {
+                  cover(verification.get.valid(instr))
+                  assume(verification.get.valid(instr))
+                }
+
+                // Verify that reset does what it's supposed to
+                when(past(clockDomain.isResetActive, 4) && ~past(clockDomain.isResetActive, 3) &&
+                  ~past(clockDomain.isResetActive, 2) && ~past(clockDomain.isResetActive, 1)) {
+                  assert(past(Addr, 2) === 0xFFFE)
+                  assert(past(Addr, 1) === 0xFFFF)
+                  assert(Addr(15 downto 8) === past(io.Din, 2))
+                  assert(Addr(7 downto 0) === past(io.Din, 1))
+                  assert(Addr === pc)
+                }
+              }
+            }
+          }
+
+          core.setDefinitionName("Core")
+          core
+        }.printPruned()
+      }
     } else {
       SpinalVerilog(new Core).printPruned()
     }

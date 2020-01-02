@@ -26,6 +26,16 @@ Run the `main` function of the `Core` object:
 sbt "runMain shdl6800.Core"
 ```
 
+## Running Simulation
+
+To run simulation, you need [Verilator](https://www.veripool.org/wiki/verilator). Once installed, run the `main` function of the `Core` object with `sim` as a parameter:
+
+```
+sbt "runMain shdl6800.Core sim"
+```
+
+This will generate Verilator code of the core and simulate the design as described in `Core.scala`. It will also generate a `test.vcd` trace file in the `simWorkspace/Core` folder, which you can view with [GTKWave](http://gtkwave.sourceforge.net/).
+
 ## Formal Verification
 
 Formal verification requires the free and open-source [SymbiYosys](https://symbiyosys.readthedocs.io/en/latest/quickstart.html) tools. Once installed, first run the `main` function of the `Core` object with the instruction you want to formally verify. For example:
