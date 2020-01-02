@@ -20,18 +20,18 @@ The following instructions have been implemented:
 
 ## Generating Verilog
 
-Run the `main` function of the `CoreVerilog` object:
+Run the `main` function of the `Core` object:
 
 ```
-sbt "runMain shdl6800.CoreVerilog"
+sbt "runMain shdl6800.Core"
 ```
 
 ## Formal Verification
 
-Formal verification requires the free and open-source [SymbiYosys](https://symbiyosys.readthedocs.io/en/latest/quickstart.html) tools. Once installed, first run the `main` function of the `CoreVerilog` object with the instruction you want to formally verify. For example:
+Formal verification requires the free and open-source [SymbiYosys](https://symbiyosys.readthedocs.io/en/latest/quickstart.html) tools. Once installed, first run the `main` function of the `Core` object with the instruction you want to formally verify. For example:
 
 ```
-sbt "runMain shdl6800.CoreVerilog jmp"
+sbt "runMain shdl6800.Core jmp"
 ```
 
 This will generate a SystemVerilog file with the formal proofs for the `jmp` instruction.

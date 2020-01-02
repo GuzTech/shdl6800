@@ -315,7 +315,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
   io.Dout := Dout
 }
 
-object CoreVerilog {
+object Core {
   def main(args: Array[String]): Unit = {
     if(args.length > 0) {
       import spinal.core.Formal._
