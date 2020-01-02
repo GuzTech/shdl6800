@@ -28,8 +28,6 @@ sbt "runMain shdl6800.CoreVerilog"
 
 ## Formal Verification
 
-*As of this commit, SpinalHDL generates an incorrect SystemVerilog file containing formal proofs, so this is not yet possible.*
-
 Formal verification requires the free and open-source [SymbiYosys](https://symbiyosys.readthedocs.io/en/latest/quickstart.html) tools. Once installed, first run the `main` function of the `CoreVerilog` object with the instruction you want to formally verify. For example:
 
 ```

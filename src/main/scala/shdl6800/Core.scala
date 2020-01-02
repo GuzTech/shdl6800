@@ -314,7 +314,8 @@ object CoreVerilog {
     if(args.length > 0) {
       import shdl6800.formal._
 
-      SpinalSystemVerilog{
+      val config = SpinalConfig(defaultConfigForClockDomains = ClockDomainConfig(resetKind = SYNC, resetActiveLevel = HIGH))
+      config.includeFormal.generateSystemVerilog{
         val verification: Option[Verification] = args(0) match {
           case "jmp" => Some(new Formal_JMP())
           case _     => None
