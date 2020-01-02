@@ -11,28 +11,38 @@ I also have some experience with SpinalHDL, and while watching his videos, it lo
 
 ## Status
 
-As of this writing, I have somewhat caught up with [Part 3](https://www.youtube.com/watch?v=aLQqOxnVMOQ), and the initial formal verification part is also implemented.
+As of this writing, I have caught up with [Part 3](https://www.youtube.com/watch?v=aLQqOxnVMOQ), and the formal verification part is also implemented.
 
 The following instructions have been implemented:
 
 - NOP
-- CLC, CLV, CLI, SEC, SEV, and SEI (with formal)
 - JMP ext (with formal)
-- BRA, BNE, BEQ, BVC, and BVS (with formal)
 
-Formal verification requires the free and open-source [SymbiYosys](https://symbiyosys.readthedocs.io/en/latest/quickstart.html) tools. Once installed, first run the `main` function of the `CoreVerilogWithFormal` object so that it generates a SystemVerilog file with the formal proofs in them:
+## Generating Verilog
+
+Run the `main` function of the `CoreVerilog` object:
 
 ```
-sbt "runMain shdl6800.CoreVerilogWithFormal"
+sbt "runMain shdl6800.CoreVerilog"
 ```
+
+## Formal Verification
+
+*As of this commit, SpinalHDL generates an incorrect SystemVerilog file containing formal proofs, so this is not yet possible.*
+
+Formal verification requires the free and open-source [SymbiYosys](https://symbiyosys.readthedocs.io/en/latest/quickstart.html) tools. Once installed, first run the `main` function of the `CoreVerilog` object with the instruction you want to formally verify. For example:
+
+```
+sbt "runMain shdl6800.CoreVerilog jmp"
+```
+
+This will generate a SystemVerilog file with the formal proofs for the `jmp` instruction.
 
 Then simply run SymbiYosys:
 
 ```
 sby -f Core.sby
 ```
-
-As of this writing, there is a bug in SpinalHDL several `$past()` statements are generated outside clocked `always` blocks. You have to manually substitute the signals inside the `assert` statements to fix this.
 
 ## License
 
