@@ -410,8 +410,9 @@ object Core {
         val config = SpinalConfig(defaultConfigForClockDomains = ClockDomainConfig(resetKind = SYNC, resetActiveLevel = HIGH))
         config.includeFormal.generateSystemVerilog {
           val verification: Option[Verification] = args(0) match {
-            case "jmp"  => Some(new Formal_JMP())
-            case "ldaa" => Some(new Formal_LDAA())
+            case "jmp"  => Some(new Formal_JMP)
+            case "ldaa" => Some(new Formal_LDAA)
+            case "adda" => Some(new Formal_ADDA)
             case _      => None
           }
           val core: Core = new Core(verification) {
