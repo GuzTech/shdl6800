@@ -11,12 +11,14 @@ I also have some experience with SpinalHDL, and while watching his videos, it lo
 
 ## Status
 
-As of this writing, I have caught up with [Part 3](https://www.youtube.com/watch?v=aLQqOxnVMOQ), and the formal verification part is also implemented.
+- [Part 3](https://www.youtube.com/watch?v=aLQqOxnVMOQ) is [completed](https://github.com/GuzTech/shdl6800/tree/part_3).
+- [Part 4](https://www.youtube.com/watch?v=xqMtyCu4lME) is being worked on.
 
 The following instructions have been implemented:
 
 - NOP
 - JMP ext (with formal)
+- LDAA ext (with formal)
 
 ## Generating Verilog
 

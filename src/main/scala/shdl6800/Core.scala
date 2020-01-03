@@ -274,6 +274,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
     switch(instr) {
       is(0x01) { NOP() }
       is(0x7E) { JMPext() }
+      is(0xB6) { LDAAext() }
       default  { end_instr(pc) }
     }
   }
@@ -298,6 +299,40 @@ case class Core(verification: Option[Verification] = None) extends Component {
     when(cycle === 2) {
       val new_pc = Cat(tmp16(15 downto 8), io.Din)
       end_instr(new_pc)
+
+      if(verification.isDefined) {
+        formalData.read(Addr, io.Din)
+      }
+    }
+  }
+
+  def LDAAext(): Unit = {
+    when(cycle === 1) {
+      tmp16(15 downto 8) := io.Din
+      val new_addr       = (pc.asSInt + 1).asBits
+      pc                 := new_addr
+      Addr               := new_addr
+      RW                 := 1
+      cycle              := 2
+
+      if(verification.isDefined) {
+        formalData.read(Addr, io.Din)
+      }
+    }
+    when(cycle === 2) {
+      tmp16(7 downto 0) := io.Din
+      val operand       = Cat(tmp16(15 downto 8), io.Din)
+      Addr              := operand
+      RW                := 1
+      cycle             := 3
+
+      if(verification.isDefined) {
+        formalData.read(Addr, io.Din)
+      }
+    }
+    when(cycle === 3) {
+      a := io.Din
+      end_instr(pc)
 
       if(verification.isDefined) {
         formalData.read(Addr, io.Din)
@@ -371,8 +406,9 @@ object Core {
         val config = SpinalConfig(defaultConfigForClockDomains = ClockDomainConfig(resetKind = SYNC, resetActiveLevel = HIGH))
         config.includeFormal.generateSystemVerilog {
           val verification: Option[Verification] = args(0) match {
-            case "jmp" => Some(new Formal_JMP())
-            case _ => None
+            case "jmp"  => Some(new Formal_JMP())
+            case "ldaa" => Some(new Formal_LDAA())
+            case _      => None
           }
           val core: Core = new Core(verification) {
             if (verification.isDefined) {
@@ -389,8 +425,8 @@ object Core {
                 assume(~formalData.snapshot_taken)
               } otherwise {
                 when(cycle2 === 20) {
-                  cover(verification.get.valid(instr))
-                  assume(verification.get.valid(instr))
+                  cover(formalData.snapshot_taken)
+                  assume(formalData.snapshot_taken)
                 }
 
                 // Verify that reset does what it's supposed to
