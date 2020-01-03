@@ -99,16 +99,11 @@ case class Core(verification: Option[Verification] = None) extends Component {
   val src8_1   = Bits(8 bits)   // Input 1 of the ALU
   val src8_2   = Bits(8 bits)   // Input 2 of the ALU
   val alu8     = Bits(8 bits)   // Output from the ALU
-  val src16    = Bits(16 bits)  // Input to 16-bit inc/dec
-  val incdec16 = Bits(16 bits)  // Output from 16-bit inc/dec
 
   // Selectors for buses
   val src8_1_select  = Reg8()
   val src8_2_select  = Reg8()
   val alu8_write     = Bits(Reg8.elements.length - 1 bits)
-  val src16_select   = Reg16()
-  val src16_write    = Bits(Reg16.elements.length - 1 bits)
-  val incdec16_write = Bits(Reg16.elements.length - 1 bits)
 
   /* Mappings of selectors to signals. The second tuple element is
    * whether the register is read/write. */
@@ -157,15 +152,11 @@ case class Core(verification: Option[Verification] = None) extends Component {
   /* Default values. Some are necessary to avoid getting compiler errors
    * about signals not having drivers, or latches being inferred. */
   end_instr_flag := 0
-  end_instr_addr := 0
-  alu8_write     := Reg8.NONE().asBits
-  alu8           := 0
-  incdec16_write := Reg16.NONE().asBits
-  incdec16       := 0
-  src16_select   := Reg16.NONE
-  src16_write    := Reg16.NONE().asBits
   src8_1_select  := Reg8.NONE
   src8_2_select  := Reg8.NONE
+  alu8_write     := Reg8.NONE().asBits
+  end_instr_addr := 0
+  alu8           := 0
   a              := 0
   b              := 0
   x              := 0
@@ -174,9 +165,6 @@ case class Core(verification: Option[Verification] = None) extends Component {
   src_bus_setup(reg8_map, src8_1, src8_1_select)
   src_bus_setup(reg8_map, src8_2, src8_2_select)
   dst_bus_setup(reg8_map, alu8, alu8_write)
-  src_bus_setup(reg16_map, src16, src16_select)
-  dst_bus_setup(reg16_map, src16, src16_write)
-  dst_bus_setup(reg16_map, incdec16, incdec16_write)
 
   reset_handler
   end_instr_flag_handler
