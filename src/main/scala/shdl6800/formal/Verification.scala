@@ -16,6 +16,7 @@
 
 package shdl6800.formal
 
+import shdl6800.Flags
 import spinal.core._
 
 class Verification {
@@ -24,6 +25,56 @@ class Verification {
   }
 
   def check(instr: Bits, data: FormalData): Unit = {}
+
+  def flags(prev: Bits,
+            H: Option[Bool] = None,
+            I: Option[Bool] = None,
+            N: Option[Bool] = None,
+            Z: Option[Bool] = None,
+            V: Option[Bool] = None,
+            C: Option[Bool] = None): Bits = {
+    val result = Bits(8 bits)
+
+    val h = if(H.isDefined) H.get else prev(Flags._H)
+    val i = if(I.isDefined) I.get else prev(Flags._I)
+    val n = if(N.isDefined) N.get else prev(Flags._N)
+    val z = if(Z.isDefined) Z.get else prev(Flags._Z)
+    val v = if(V.isDefined) V.get else prev(Flags._V)
+    val c = if(C.isDefined) C.get else prev(Flags._C)
+
+    result := (
+      7 -> True,
+      6 -> True,
+      5 -> h,
+      4 -> i,
+      3 -> n,
+      2 -> z,
+      1 -> v,
+      0 -> c)
+
+    result
+  }
+
+  def assertFlags(post_flags: Bits,
+                  pre_flags: Bits,
+                  H: Option[Bool] = None,
+                  I: Option[Bool] = None,
+                  N: Option[Bool] = None,
+                  Z: Option[Bool] = None,
+                  V: Option[Bool] = None,
+                  C: Option[Bool] = None): Unit = {
+    val expectedFlags = Bits(8 bits)
+    expectedFlags := flags(pre_flags, H, I, N, Z, V, C)
+
+    assert(post_flags(7) === expectedFlags(7))
+    assert(post_flags(6) === expectedFlags(6))
+    assert(post_flags(Flags._H) === expectedFlags(Flags._H))
+    assert(post_flags(Flags._I) === expectedFlags(Flags._I))
+    assert(post_flags(Flags._N) === expectedFlags(Flags._N))
+    assert(post_flags(Flags._Z) === expectedFlags(Flags._Z))
+    assert(post_flags(Flags._V) === expectedFlags(Flags._V))
+    assert(post_flags(Flags._C) === expectedFlags(Flags._C))
+  }
 }
 
 case class FormalData(verification: Option[Verification]) {
@@ -31,12 +82,14 @@ case class FormalData(verification: Option[Verification]) {
 
   val instr             = Reg(Bits(8 bits))  init(0)
 
+  val pre_ccs           = Reg(Bits(8 bits))  init(B"11010000")
   val pre_a             = Reg(Bits(8 bits))  init(0)
   val pre_b             = Reg(Bits(8 bits))  init(0)
   val pre_x             = Reg(Bits(16 bits)) init(0)
   val pre_sp            = Reg(Bits(16 bits)) init(0)
   val pre_pc            = Reg(Bits(16 bits)) init(0)
 
+  val post_ccs          = Bits(8 bits)
   val post_a            = Bits(8 bits)
   val post_b            = Bits(8 bits)
   val post_x            = Bits(16 bits)
@@ -52,11 +105,12 @@ case class FormalData(verification: Option[Verification]) {
   val read_data         = Vec(Reg(Bits), 8)
 
   // Assign default values to prevent compiler detecting latches.
-  post_a  := 0
-  post_b  := 0
-  post_x  := 0
-  post_sp := 0
-  post_pc := 0
+  post_ccs := 0
+  post_a   := 0
+  post_b   := 0
+  post_x   := 0
+  post_sp  := 0
+  post_pc  := 0
 
   def plus16(v1: SInt, v2: SInt): SInt = {
     val tmp = SInt(16 bits)
@@ -96,12 +150,13 @@ case class FormalData(verification: Option[Verification]) {
     }
   }
 
-  def preSnapshot(instr: Bits, a: Bits, b: Bits, x: Bits, sp: Bits, pc: Bits): Unit = {
+  def preSnapshot(instr: Bits, ccs: Bits, a: Bits, b: Bits, x: Bits, sp: Bits, pc: Bits): Unit = {
     if(verification.isDefined) {
       snapshot_taken    := True
       addresses_read    := 0
       addresses_written := 0
       this.instr        := instr
+      pre_ccs           := ccs
       pre_a             := a
       pre_b             := b
       pre_x             := x
@@ -116,20 +171,14 @@ case class FormalData(verification: Option[Verification]) {
     }
   }
 
-  def postSnapshot(a: Bits, b: Bits, x: Bits, sp: Bits, pc: Bits): Unit = {
+  def postSnapshot(ccs: Bits, a: Bits, b: Bits, x: Bits, sp: Bits, pc: Bits): Unit = {
     if(verification.isDefined) {
-      post_a  := a
-      post_b  := b
-      post_x  := x
-      post_sp := sp
-      post_pc := pc
+      post_ccs := ccs
+      post_a   := a
+      post_b   := b
+      post_x   := x
+      post_sp  := sp
+      post_pc  := pc
     }
   }
 }
-
-//object CoreVerilogWithFormal {
-//  def main(args: Array[String]): Unit = {
-//    val config = SpinalConfig(defaultConfigForClockDomains = ClockDomainConfig(resetKind = SYNC, resetActiveLevel = HIGH))
-//    config.includeFormal.generateSystemVerilog(new Core())
-//  }
-//}

@@ -25,6 +25,7 @@ class Formal_JMP extends Verification {
 
   override def check(instr: Bits, data: FormalData): Unit = {
     // Asserts are not possible with combinatorial signals in SpinalHDL yet...
+    assert(data.post_ccs === data.pre_ccs)
     assert(data.post_a === data.pre_a)
     assert(data.post_b === data.pre_b)
     assert(data.post_x === data.pre_x)

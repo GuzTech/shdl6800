@@ -36,5 +36,11 @@ class Formal_LDAA extends Verification {
     assert(data.read_addr(1) === data.plus16(data.pre_pc.asSInt, 2).asBits)
     assert(data.read_addr(2) === Cat(data.read_data(0), data.read_data(1)))
     assert(data.post_a === data.read_data(2))
+    assertFlags(
+      data.post_ccs,
+      data.pre_ccs,
+      Z = Some(data.post_a === 0),
+      N = Some(data.post_a(7)),
+      V = Some(False))
   }
 }

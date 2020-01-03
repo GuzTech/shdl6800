@@ -82,9 +82,9 @@ case class Core(verification: Option[Verification] = None) extends Component {
   }
 
   // Registers
-  val RW    = Reg(Bits(1 bit)) init(1)
+  val RW    = Reg(Bits(1 bit))   init(1)
   val Addr  = Reg(Bits(16 bits)) init(0)
-  val Dout  = Reg(Bits(8 bits))
+  val Dout  = Reg(Bits(8 bits))  init(0)
 
   val a     = Reg(Bits(8 bits))
   val b     = Reg(Bits(8 bits))
@@ -99,11 +99,14 @@ case class Core(verification: Option[Verification] = None) extends Component {
   val src8_1   = Bits(8 bits)   // Input 1 of the ALU
   val src8_2   = Bits(8 bits)   // Input 2 of the ALU
   val alu8     = Bits(8 bits)   // Output from the ALU
+  val ccs      = Bits(8 bits)   // Flags from the ALU
 
   // Selectors for buses
   val src8_1_select  = Reg8()
   val src8_2_select  = Reg8()
-  val alu8_write     = Bits(Reg8.elements.length - 1 bits)
+
+  // Function control
+  val alu8_func = ALU8Func()
 
   /* Mappings of selectors to signals. The second tuple element is
    * whether the register is read/write. */
@@ -146,6 +149,8 @@ case class Core(verification: Option[Verification] = None) extends Component {
   val end_instr_flag = Bits(1 bit)   // Performs end-of-instruction actions
   val end_instr_addr = Bits(16 bits) // where the next instruction is
 
+  val alu = new ALU8
+
   // Formal verification
   val formalData = FormalData(verification)
 
@@ -154,17 +159,20 @@ case class Core(verification: Option[Verification] = None) extends Component {
   end_instr_flag := 0
   src8_1_select  := Reg8.NONE
   src8_2_select  := Reg8.NONE
-  alu8_write     := Reg8.NONE().asBits
+  alu8_func      := ALU8Func.NONE
   end_instr_addr := 0
-  alu8           := 0
-  a              := 0
   b              := 0
   x              := 0
   sp             := 0
 
   src_bus_setup(reg8_map, src8_1, src8_1_select)
   src_bus_setup(reg8_map, src8_2, src8_2_select)
-  dst_bus_setup(reg8_map, alu8, alu8_write)
+
+  alu.io.input1 := src8_1
+  alu.io.input2 := src8_2
+  alu8          := alu.io.output
+  alu.io.func   := alu8_func
+  ccs           := alu.io.ccs
 
   reset_handler
   end_instr_flag_handler
@@ -244,13 +252,13 @@ case class Core(verification: Option[Verification] = None) extends Component {
 
       when((cycle === 0) && (reset_state === 3)) {
         when(v.valid(io.Din)) {
-          formalData.preSnapshot(io.Din, a, b, x, sp, pc)
+          formalData.preSnapshot(io.Din, ccs, a, b, x, sp, pc)
         } otherwise {
           formalData.noSnapshot
         }
 
         when(formalData.snapshot_taken) {
-          formalData.postSnapshot(a, b, x, sp, pc)
+          formalData.postSnapshot(ccs, a, b, x, sp, pc)
           v.check(instr, formalData)
         }
       }
@@ -287,7 +295,9 @@ case class Core(verification: Option[Verification] = None) extends Component {
       RW   := 1
     }
     when(cycle === 3) {
-      a := io.Din
+      src8_1    := io.Din
+      alu8_func := ALU8Func.LD
+      a         := alu8
       end_instr(pc)
 
       if(verification.isDefined) {
@@ -329,6 +339,11 @@ case class Core(verification: Option[Verification] = None) extends Component {
     operand
   }
 
+  /* Ends the instruction.
+   *
+   * Loads the PC and Addr register with the given addr, sets R/W mode
+   * to read, and sets the cycle to 0 at the end of the current cycle.
+   */
   def end_instr(addr: Bits): Unit = {
     end_instr_addr := addr
     end_instr_flag := 1
