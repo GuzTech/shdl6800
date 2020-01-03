@@ -413,7 +413,7 @@ object Core {
           val core: Core = new Core(verification) {
             if (verification.isDefined) {
               // Cycle counter
-              val cycle2 = Reg(UInt(6 bits)) init (0)
+              val cycle2 = Reg(UInt(6 bits))
               cycle2 := (cycle2 + 1)
 
               // Force a reset
