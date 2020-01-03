@@ -30,8 +30,8 @@ bmc: multiclock off
 smtbmc boolector
 
 [script]
-read -sv Core.sv
-prep -top Core
+read -sv ALU8.sv
+prep -top ALU8
 
 [files]
-Core.sv
+ALU8.sv
