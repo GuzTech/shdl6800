@@ -144,7 +144,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
 
   // Internal state
   val reset_state    = Reg(Bits(2 bits)) init(0) // Where we are during reset
-  val cycle          = Reg(Bits(4 bits)) init(0) // Where we are during instr processing
+  val cycle          = Reg(UInt(4 bits)) init(0) // Where we are during instr processing
 
   val end_instr_flag = Bits(1 bit)   // Performs end-of-instruction actions
   val end_instr_addr = Bits(16 bits) // where the next instruction is
@@ -271,6 +271,8 @@ case class Core(verification: Option[Verification] = None) extends Component {
       is(0x01) { NOP() }
       is(0x7E) { JMPext() }
       is(0xB6) { LDAAext() }
+
+      is(0xBB) { ADDAext() }
       default  { end_instr(pc) }
     }
   }
@@ -287,22 +289,45 @@ case class Core(verification: Option[Verification] = None) extends Component {
     }
   }
 
-  def LDAAext(): Unit = {
-    val operand = mode_ext()
-
-    when(cycle === 2) {
-      Addr := operand
+  /* Reads a byte starting from the given cycle.
+   *
+   * The byte read is combinatorially placed in comb_dest.
+   */
+  def read_byte(cycle: UInt, addr: Bits, comb_dest: Bits): Unit = {
+    when(this.cycle === cycle) {
+      Addr := addr
       RW   := 1
     }
-    when(cycle === 3) {
-      src8_1    := io.Din
-      alu8_func := ALU8Func.LD
-      a         := alu8
-      end_instr(pc)
+
+    when(this.cycle === (cycle + U"1")) {
+      comb_dest := io.Din
 
       if(verification.isDefined) {
         formalData.read(Addr, io.Din)
       }
+    }
+  }
+
+  def LDAAext(): Unit = {
+    val operand = mode_ext()
+    read_byte(cycle = 2, addr = operand, comb_dest = src8_1)
+
+    when(cycle === 3) {
+      alu8_func := ALU8Func.LD
+      a         := alu8
+      end_instr(pc)
+    }
+  }
+
+  def ADDAext(): Unit = {
+    val operand = mode_ext()
+    read_byte(cycle = 2, addr = operand, comb_dest = src8_2)
+
+    when(cycle === 3) {
+      src8_1    := a
+      alu8_func := ALU8Func.ADD
+      a         := alu8
+      end_instr(pc)
     }
   }
 
@@ -329,6 +354,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
 
     when(cycle === 2) {
       tmp16(7 downto 0) := io.Din
+      pc                := (pc.asSInt + 1).asBits
       cycle             := 3
 
       if(verification.isDefined) {
