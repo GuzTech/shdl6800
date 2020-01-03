@@ -19,6 +19,8 @@ The following instructions have been implemented:
 - NOP
 - JMP ext (with formal)
 - LDAA ext (with formal)
+- ADDA ext (with formal)
+- ADCA ext (with formal)
 
 ## Generating Verilog
 
