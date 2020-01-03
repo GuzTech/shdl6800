@@ -272,6 +272,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
       is(0x7E) { JMPext() }
       is(0xB6) { LDAAext() }
 
+      is(0xB9) { ADCAext() }
       is(0xBB) { ADDAext() }
       default  { end_instr(pc) }
     }
@@ -299,7 +300,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
       RW   := 1
     }
 
-    when(this.cycle === (cycle + U"1")) {
+    when(this.cycle === (cycle + 1)) {
       comb_dest := io.Din
 
       if(verification.isDefined) {
@@ -326,6 +327,18 @@ case class Core(verification: Option[Verification] = None) extends Component {
     when(cycle === 3) {
       src8_1    := a
       alu8_func := ALU8Func.ADD
+      a         := alu8
+      end_instr(pc)
+    }
+  }
+
+  def ADCAext(): Unit = {
+    val operand = mode_ext()
+    read_byte(cycle = 2, addr = operand, comb_dest = src8_2)
+
+    when(cycle === 3) {
+      src8_1    := a
+      alu8_func := ALU8Func.ADC
       a         := alu8
       end_instr(pc)
     }
