@@ -272,51 +272,19 @@ case class Core(verification: Option[Verification] = None) extends Component {
   }
 
   def JMPext(): Unit = {
-    when(cycle === 1) {
-      tmp16(15 downto 8) := io.Din
-      val new_addr       = (pc.asSInt + 1).asBits
-      pc                 := new_addr
-      Addr               := new_addr
-      RW                 := 1
-      cycle              := 2
+    val operand = mode_ext()
 
-      if(verification.isDefined) {
-        formalData.read(Addr, io.Din)
-      }
-    }
     when(cycle === 2) {
-      val new_pc = Cat(tmp16(15 downto 8), io.Din)
-      end_instr(new_pc)
-
-      if(verification.isDefined) {
-        formalData.read(Addr, io.Din)
-      }
+      end_instr(operand)
     }
   }
 
   def LDAAext(): Unit = {
-    when(cycle === 1) {
-      tmp16(15 downto 8) := io.Din
-      val new_addr       = (pc.asSInt + 1).asBits
-      pc                 := new_addr
-      Addr               := new_addr
-      RW                 := 1
-      cycle              := 2
+    val operand = mode_ext()
 
-      if(verification.isDefined) {
-        formalData.read(Addr, io.Din)
-      }
-    }
     when(cycle === 2) {
-      tmp16(7 downto 0) := io.Din
-      val operand       = Cat(tmp16(15 downto 8), io.Din)
-      Addr              := operand
-      RW                := 1
-      cycle             := 3
-
-      if(verification.isDefined) {
-        formalData.read(Addr, io.Din)
-      }
+      Addr := operand
+      RW   := 1
     }
     when(cycle === 3) {
       a := io.Din
@@ -326,6 +294,39 @@ case class Core(verification: Option[Verification] = None) extends Component {
         formalData.read(Addr, io.Din)
       }
     }
+  }
+
+  /* Generates logic to get the 16-bit operand for extended mode instructions.
+   *
+   * Returns a Statement valid for cycle 2 only, containing the
+   * 16-bit operand. After cycle 2, tmp16 contains the operand.
+   */
+  def mode_ext(): Bits = {
+    val operand = Cat(tmp16(15 downto 8), io.Din)
+
+    when(cycle === 1) {
+      tmp16(15 downto 8) := io.Din
+      val new_addr       = (pc.asSInt + 1).asBits
+      pc                 := new_addr
+      Addr               := new_addr
+      RW                 := 1
+      cycle              := 2
+
+      if(verification.isDefined) {
+        formalData.read(Addr, io.Din)
+      }
+    }
+
+    when(cycle === 2) {
+      tmp16(7 downto 0) := io.Din
+      cycle             := 3
+
+      if(verification.isDefined) {
+        formalData.read(Addr, io.Din)
+      }
+    }
+
+    operand
   }
 
   def end_instr(addr: Bits): Unit = {
