@@ -38,7 +38,7 @@ class Formal_ADDA extends Verification {
     assert(data.post_sp === data.pre_sp)
     assert(data.addresses_written === 0)
 
-    assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 2).asBits)
+    assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 3).asBits)
     assert(data.addresses_read === 3)
     assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
     assert(data.read_addr(1) === data.plus16(data.pre_pc.asSInt, 2).asBits)
