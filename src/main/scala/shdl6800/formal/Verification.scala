@@ -101,7 +101,7 @@ case class FormalData(verification: Option[Verification]) {
   val write_addr        = Vec(Reg(Bits), 8)
   val write_data        = Vec(Reg(Bits), 8)
 
-  val addresses_read    = Reg(UInt(3 bits))
+  val addresses_read    = Reg(UInt(3 bits)) init(0)
   val read_addr         = Vec(Reg(Bits), 8)
   val read_data         = Vec(Reg(Bits), 8)
 
