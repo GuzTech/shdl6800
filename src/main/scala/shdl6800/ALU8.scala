@@ -30,14 +30,19 @@ object Flags {
 }
 
 object ALU8Func extends SpinalEnum {
-  val NONE, LD, ADD, ADC, SUB, SBC = newElement()
+  val NONE, LD, ADD, ADC, SUB, SBC, AND, EOR, ORA = newElement()
   defaultEncoding = SpinalEnumEncoding("staticEncoding") (
     NONE -> 0,
     LD   -> 1,
     ADD  -> 2,
     ADC  -> 3,
     SUB  -> 4,
-    SBC  -> 5
+    SBC  -> 5,
+    AND  -> 6,
+    // BIT is the same as AND, just don't store the output.
+    // CMP is the same as SUB, just don't store the output.
+    EOR  -> 7,
+    ORA  -> 8
   )
 }
 
@@ -133,6 +138,24 @@ class ALU8 extends Component {
       _ccs(Flags._Z) := io.output === 0
       _ccs(Flags._V) := overflow.asBool
       _ccs(Flags._C) := ~carry8.asBool
+    }
+    is(ALU8Func.AND) {
+      io.output      := io.input1 & io.input2
+      _ccs(Flags._Z) := io.output === 0
+      _ccs(Flags._N) := io.output(7)
+      _ccs(Flags._V) := False
+    }
+    is(ALU8Func.EOR) {
+      io.output      := io.input1 ^ io.input2
+      _ccs(Flags._Z) := io.output === 0
+      _ccs(Flags._N) := io.output(7)
+      _ccs(Flags._V) := False
+    }
+    is(ALU8Func.ORA) {
+      io.output      := io.input1 | io.input2
+      _ccs(Flags._Z) := io.output === 0
+      _ccs(Flags._N) := io.output(7)
+      _ccs(Flags._V) := False
     }
     default {
       io.output := 0
