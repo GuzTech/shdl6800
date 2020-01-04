@@ -19,14 +19,24 @@ package shdl6800.formal
 
 import spinal.core._
 
-class Formal_LDAA extends Verification {
+class Formal_ORA extends Verification {
   override def valid(instr: Bits): Bool = {
-    instr === B"10110110"
+    instr === M"1-11_1010"
   }
 
   override def check(instr: Bits, data: FormalData): Unit = {
     // Asserts are not possible with combinatorial signals in SpinalHDL yet...
-    assert(data.post_b === data.pre_b)
+
+    val b         = instr(6)
+    val pre_input = Mux(b, data.pre_b, data.pre_a)
+    val output    = Mux(b, data.post_b, data.post_a)
+
+    when(b) {
+      assert(data.post_a === data.pre_a)
+    } otherwise {
+      assert(data.post_b === data.pre_b)
+    }
+
     assert(data.post_x === data.pre_x)
     assert(data.post_sp === data.pre_sp)
     assert(data.addresses_written === 0)
@@ -36,12 +46,20 @@ class Formal_LDAA extends Verification {
     assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
     assert(data.read_addr(1) === data.plus16(data.pre_pc.asSInt, 2).asBits)
     assert(data.read_addr(2) === Cat(data.read_data(0), data.read_data(1)))
-    assert(data.post_a === data.read_data(2))
+
+    val input1 = pre_input
+    val input2 = data.read_data(2)
+
+    val z = output === 0
+    val n = output(7)
+    val v = False
+
+    assert(output === (input1 | input2))
     assertFlags(
       data.post_ccs,
       data.pre_ccs,
-      Z = Some(data.post_a === 0),
-      N = Some(data.post_a(7)),
-      V = Some(False))
+      Z = Some(z),
+      N = Some(n),
+      V = Some(v))
   }
 }

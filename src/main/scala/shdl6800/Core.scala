@@ -32,7 +32,6 @@ package shdl6800
 
 import shdl6800.formal.{FormalData, Verification}
 import spinal.core._
-import spinal.core.sim.{SimConfig, fork, sleep}
 
 /* Values for specifying an 8-bit register for things
  * like sources and destinations. Can also specify the
@@ -79,12 +78,14 @@ case class Core(verification: Option[Verification] = None) extends Component {
     val Din  = in  Bits(8 bits)
     val Dout = out Bits(8 bits)
     val RW   = out Bits(1 bit)  // 1 = read, 0 = write
+    val VMA  = out Bits(1 bit)  // 1 = address is valid
   }
 
   // Registers
   val RW    = Reg(Bits(1 bit))   init(1)
   val Addr  = Reg(Bits(16 bits)) init(0)
   val Dout  = Reg(Bits(8 bits))  init(0)
+  val VMA   = Reg(Bits(1 bit))           init(0)
 
   val a     = Reg(Bits(8 bits))
   val b     = Reg(Bits(8 bits))
@@ -129,19 +130,6 @@ case class Core(verification: Option[Verification] = None) extends Component {
                      , Reg16.TMP16 -> (this.tmp16, true)
                      , Reg16.ADDR  -> (this.Addr, true))
 
-  def src_bus_setup[T <: SpinalEnum](reg_map: Map[SpinalEnumElement[T], (Bits, Boolean)], bus: Bits, selector: SpinalEnumCraft[T]): Unit = {
-    switch(selector) {
-      reg_map.foreach {case (e, reg) => is(e) { bus := reg._1 }}
-      default {
-        bus := 0
-      }
-    }
-  }
-
-  def dst_bus_setup[T <: SpinalEnum](reg_map: Map[SpinalEnumElement[T], (Bits, Boolean)], bus: Bits, bitmap: Bits): Unit = {
-    reg_map.foreach {case (e, reg) => if(reg._2) { when(bitmap(e.position - 1)) {reg._1 := bus} }}
-  }
-
   // Internal state
   val reset_state    = Reg(Bits(2 bits)) init(0) // Where we are during reset
   val cycle          = Reg(UInt(4 bits)) init(0) // Where we are during instr processing
@@ -161,7 +149,6 @@ case class Core(verification: Option[Verification] = None) extends Component {
   src8_2_select  := Reg8.NONE
   alu8_func      := ALU8Func.NONE
   end_instr_addr := 0
-  b              := 0
   x              := 0
   sp             := 0
 
@@ -174,9 +161,9 @@ case class Core(verification: Option[Verification] = None) extends Component {
   alu.io.func   := alu8_func
   ccs           := alu.io.ccs
 
-  reset_handler
-  end_instr_flag_handler
-  maybe_do_formal_verification
+  reset_handler()
+  end_instr_flag_handler()
+  maybe_do_formal_verification()
 
   when(reset_state === 3) {
     when(cycle === 0) {
@@ -186,9 +173,22 @@ case class Core(verification: Option[Verification] = None) extends Component {
     }
   }
 
+  def src_bus_setup[T <: SpinalEnum](reg_map: Map[SpinalEnumElement[T], (Bits, Boolean)], bus: Bits, selector: SpinalEnumCraft[T]): Unit = {
+    switch(selector) {
+      reg_map.foreach {case (e, reg) => is(e) { bus := reg._1 }}
+      default {
+        bus := 0
+      }
+    }
+  }
+
+  def dst_bus_setup[T <: SpinalEnum](reg_map: Map[SpinalEnumElement[T], (Bits, Boolean)], bus: Bits, bitmap: Bits): Unit = {
+    reg_map.foreach {case (e, reg) => if(reg._2) { when(bitmap(e.position - 1)) {reg._1 := bus} }}
+  }
+
   /* Generates logic for reading the reset vector at 0xFFFE
    * and jumping there. */
-  def reset_handler: Unit = {
+  def reset_handler(): Unit = {
     switch(reset_state) {
       is(0) {
         Addr        := B"16'hFFFE"
@@ -214,7 +214,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
   }
 
   // Generates logic for handling the end of an instruction.
-  def end_instr_flag_handler: Unit = {
+  def end_instr_flag_handler(): Unit = {
     when(end_instr_flag === 1) {
       pc    := end_instr_addr
       Addr  := end_instr_addr
@@ -238,7 +238,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
 
   /* If formal verification is enabled, take pre- and post-snapshots, and do asserts.
    *
-   * A pre-snapshot is take of the registers when io.Din is the instruction we're
+   * A pre-snapshot is taken of the registers when io.Din is the instruction we're
    * looking for, and we're on cycle 0. We use io.Din because io.Din -> instr only at the
    * *end* of cycle 0.
    *
@@ -268,26 +268,20 @@ case class Core(verification: Option[Verification] = None) extends Component {
   // Execute the instruction in the instr register.
   def execute(): Unit = {
     switch(instr) {
-      is(0x01) { NOP() }
-      is(0x7E) { JMPext() }
-      is(0xB6) { LDAAext() }
-      is(0xB0) { SUBAext() }
-      is(0xB2) { SBCAext() }
-      is(0xB9) { ADCAext() }
-      is(0xBB) { ADDAext() }
-      default  { end_instr(pc) }
-    }
-  }
-
-  def NOP(): Unit = {
-    end_instr(pc)
-  }
-
-  def JMPext(): Unit = {
-    val operand = mode_ext()
-
-    when(cycle === 2) {
-      end_instr(operand)
+      is(B"0000_0001") { NOP() }                                // NOP
+      is(B"0111_1110") { JMPext() }                             // JMP ext
+      is(M"1-11_0110") { ALUext(ALU8Func.LD) }                  // LDA ext
+      is(M"1-11_0000") { ALUext(ALU8Func.SUB) }                 // SUB ext
+      is(M"1-11_0001") { ALUext(ALU8Func.SUB, store = false) }  // CMP ext
+      is(M"1-11_0010") { ALUext(ALU8Func.SBC) }                 // SBC ext
+      is(M"1-11_0100") { ALUext(ALU8Func.AND) }                 // AND ext
+      is(M"1-11_0101") { ALUext(ALU8Func.AND, store = false) }  // BIT ext
+      is(M"1-11_0111") { STAext() }                             // STA ext
+      is(M"1-11_1000") { ALUext(ALU8Func.EOR) }                 // EOR ext
+      is(M"1-11_1001") { ALUext(ALU8Func.ADC) }                 // ADC ext
+      is(M"1-11_1010") { ALUext(ALU8Func.ORA) }                 // ORA ext
+      is(M"1-11_1011") { ALUext(ALU8Func.ADD) }                 // ADD ext
+      default  { end_instr(pc) }                                // Illegal
     }
   }
 
@@ -310,72 +304,77 @@ case class Core(verification: Option[Verification] = None) extends Component {
     }
   }
 
-  def LDAAext(): Unit = {
+  def ALUext(func: SpinalEnumElement[ALU8Func.type], store: Boolean = true): Unit = {
     val operand = mode_ext()
-    read_byte(cycle = 2, addr = operand, comb_dest = src8_1)
+    read_byte(cycle = 2, addr = operand, comb_dest = src8_2)
+
+    val b_bit = instr(6)
 
     when(cycle === 3) {
+      src8_1    := Mux(b_bit, b, a)
+      alu8_func := func
+
+      if(store) {
+        when(b_bit) {
+          b := alu8
+        } otherwise {
+          a := alu8
+        }
+      }
+
+      end_instr(pc)
+    }
+  }
+
+  def JMPext(): Unit = {
+    val operand = mode_ext()
+
+    when(cycle === 2) {
+      end_instr(operand)
+    }
+  }
+
+  def NOP(): Unit = {
+    end_instr(pc)
+  }
+
+  def STAext(): Unit = {
+    val operand = mode_ext()
+
+    val b_bit = instr(6)
+
+    when(cycle === 2) {
+      VMA  := 0
+      Addr := operand
+      RW   := 1
+    }
+
+    when(cycle === 3) {
+      Addr  := operand
+      Dout  := Mux(b_bit, b, a)
+      RW    := 0
+      cycle := 4
+    }
+
+    when(cycle === 4) {
+      if(verification.isDefined) {
+        formalData.write(Addr, Dout)
+      }
+
+      src8_2    := Mux(b_bit, b, a)
       alu8_func := ALU8Func.LD
-      a         := alu8
-      end_instr(pc)
-    }
-  }
-
-  def ADDAext(): Unit = {
-    val operand = mode_ext()
-    read_byte(cycle = 2, addr = operand, comb_dest = src8_2)
-
-    when(cycle === 3) {
-      src8_1    := a
-      alu8_func := ALU8Func.ADD
-      a         := alu8
-      end_instr(pc)
-    }
-  }
-
-  def ADCAext(): Unit = {
-    val operand = mode_ext()
-    read_byte(cycle = 2, addr = operand, comb_dest = src8_2)
-
-    when(cycle === 3) {
-      src8_1    := a
-      alu8_func := ALU8Func.ADC
-      a         := alu8
-      end_instr(pc)
-    }
-  }
-
-  def SUBAext(): Unit = {
-    val operand = mode_ext()
-    read_byte(cycle = 2, addr = operand, comb_dest = src8_2)
-
-    when(cycle === 3) {
-      src8_1    := a
-      alu8_func := ALU8Func.SUB
-      a         := alu8
-      end_instr(pc)
-    }
-  }
-
-  def SBCAext(): Unit = {
-    val operand = mode_ext()
-    read_byte(cycle = 2, addr = operand, comb_dest = src8_2)
-
-    when(cycle === 3) {
-      src8_1    := a
-      alu8_func := ALU8Func.SBC
-      a         := alu8
       end_instr(pc)
     }
   }
 
   /* Generates logic to get the 16-bit operand for extended mode instructions.
    *
-   * Returns a Statement valid for cycle 2 only, containing the
-   * 16-bit operand. After cycle 2, tmp16 contains the operand.
+   * Returns the Bits containing the 16-bit operand. After cycle 2, tmp16
+   * contains the operand.
    */
   def mode_ext(): Bits = {
-    val operand = Cat(tmp16(15 downto 8), io.Din)
+    val operand = Mux(cycle === 2,
+      Cat(tmp16(15 downto 8), io.Din), tmp16)
 
     when(cycle === 1) {
       tmp16(15 downto 8) := io.Din
@@ -417,6 +416,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
   io.RW   := RW
   io.Addr := Addr
   io.Dout := Dout
+  io.VMA  := VMA
 }
 
 object Core {
@@ -474,11 +474,17 @@ object Core {
         val config = SpinalConfig(defaultConfigForClockDomains = ClockDomainConfig(resetKind = SYNC, resetActiveLevel = HIGH))
         config.includeFormal.generateSystemVerilog {
           val verification: Option[Verification] = args(0) match {
-            case "jmp"  => Some(new Formal_JMP)
-            case "ldaa" => Some(new Formal_LDAA)
-            case "adda" => Some(new Formal_ADDA)
-            case "suba" => Some(new Formal_SUBA)
-            case _      => None
+            case "jmp" => Some(new Formal_JMP)
+            case "lda" => Some(new Formal_LDA)
+            case "add" => Some(new Formal_ADD)
+            case "sub" => Some(new Formal_SUB)
+            case "and" => Some(new Formal_AND)
+            case "bit" => Some(new Formal_BIT)
+            case "cmp" => Some(new Formal_CMP)
+            case "eor" => Some(new Formal_EOR)
+            case "ora" => Some(new Formal_ORA)
+            case "sta" => Some(new Formal_STA)
+            case _     => None
           }
           val core: Core = new Core(verification) {
             if (verification.isDefined) {
@@ -495,8 +501,8 @@ object Core {
                 assume(~formalData.snapshot_taken)
               } otherwise {
                 when(cycle2 === 20) {
-                  cover(formalData.snapshot_taken)
-                  assume(formalData.snapshot_taken)
+                  cover(formalData.snapshot_taken & end_instr_flag.asBool)
+                  assume(formalData.snapshot_taken & end_instr_flag.asBool)
                 }
 
                 // Verify that reset does what it's supposed to
