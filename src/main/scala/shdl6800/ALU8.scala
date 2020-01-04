@@ -77,9 +77,9 @@ class ALU8 extends Component {
 
   switch(io.func) {
     is(ALU8Func.LD) {
-      io.output := io.input1
-      _ccs(Flags._Z) := (io.input1 === 0)
-      _ccs(Flags._N) := (io.input1(7))
+      io.output := io.input2
+      _ccs(Flags._Z) := (io.output === 0)
+      _ccs(Flags._N) := (io.output(7))
       _ccs(Flags._V) := False
     }
     is(ALU8Func.ADD, ALU8Func.ADC) {
