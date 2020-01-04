@@ -13,17 +13,23 @@ I also have some experience with SpinalHDL, and while watching his videos, it lo
 
 - [Part 3](https://www.youtube.com/watch?v=aLQqOxnVMOQ) is [completed](https://github.com/GuzTech/shdl6800/tree/part_3).
 - [Part 4](https://www.youtube.com/watch?v=xqMtyCu4lME) is [completed](https://github.com/GuzTech/shdl6800/tree/part_4).
-- [Part 5](https://www.youtube.com/watch?v=9MMb9dSnNvo) is being worked on.
+- [Part 5](https://www.youtube.com/watch?v=9MMb9dSnNvo) is completed as far as the HDL. The FPGA specific code is not yet written.
 
 The following instructions have been implemented:
 
 - NOP
+- ADDA/ADDB ext (with formal *add*)
+- ADCA/ADCB ext (with formal *add*)
+- ANDA/ANDB ext (with formal *and*)
+- BITA/BITB ext (with formal *bit*)
+- CMPA/CMPB ext (with formal *cmp*)
+- EORA/EORB ext (with formal *eor*)
 - JMP ext (with formal *jmp*)
-- LDAA ext (with formal *ldaa*)
-- ADDA ext (with formal *adda*)
-- ADCA ext (with formal *adda*)
-- SUBA ext (with formal *suba*)
-- SBCA ext (with formal *suba*)
+- LDAA/LDAB ext (with formal *lda*)
+- ORAA/ORAB ext (with formal *ora*)
+- STAA/STAB ext (with formal *sta*)
+- SUBA/SUBC ext (with formal *sub*)
+- SBCA/SBCB ext (with formal *sub*)
 
 ## Generating Verilog
 

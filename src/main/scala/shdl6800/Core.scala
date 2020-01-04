@@ -85,7 +85,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
   val RW    = Reg(Bits(1 bit))   init(1)
   val Addr  = Reg(Bits(16 bits)) init(0)
   val Dout  = Reg(Bits(8 bits))  init(0)
-  val VMA   = Reg(Bits(1 bit))           init(0)
+  val VMA   = Reg(Bits(1 bit))   init(0)
 
   val a     = Reg(Bits(8 bits))
   val b     = Reg(Bits(8 bits))
