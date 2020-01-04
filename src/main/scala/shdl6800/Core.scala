@@ -271,7 +271,8 @@ case class Core(verification: Option[Verification] = None) extends Component {
       is(0x01) { NOP() }
       is(0x7E) { JMPext() }
       is(0xB6) { LDAAext() }
-
+      is(0xB0) { SUBAext() }
+      is(0xB2) { SBCAext() }
       is(0xB9) { ADCAext() }
       is(0xBB) { ADDAext() }
       default  { end_instr(pc) }
@@ -339,6 +340,30 @@ case class Core(verification: Option[Verification] = None) extends Component {
     when(cycle === 3) {
       src8_1    := a
       alu8_func := ALU8Func.ADC
+      a         := alu8
+      end_instr(pc)
+    }
+  }
+
+  def SUBAext(): Unit = {
+    val operand = mode_ext()
+    read_byte(cycle = 2, addr = operand, comb_dest = src8_2)
+
+    when(cycle === 3) {
+      src8_1    := a
+      alu8_func := ALU8Func.SUB
+      a         := alu8
+      end_instr(pc)
+    }
+  }
+
+  def SBCAext(): Unit = {
+    val operand = mode_ext()
+    read_byte(cycle = 2, addr = operand, comb_dest = src8_2)
+
+    when(cycle === 3) {
+      src8_1    := a
+      alu8_func := ALU8Func.SBC
       a         := alu8
       end_instr(pc)
     }
@@ -452,6 +477,7 @@ object Core {
             case "jmp"  => Some(new Formal_JMP)
             case "ldaa" => Some(new Formal_LDAA)
             case "adda" => Some(new Formal_ADDA)
+            case "suba" => Some(new Formal_SUBA)
             case _      => None
           }
           val core: Core = new Core(verification) {
