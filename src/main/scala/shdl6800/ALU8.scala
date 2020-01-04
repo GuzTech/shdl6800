@@ -115,16 +115,14 @@ class ALU8 extends Component {
        * so we have to extend by 1 bit by hand, or use the development
        * version. Here we extend by hand. */
       val in1_ext0_7 = io.input1(6 downto 0).resize(8).asUInt
-      val in2_ext0_7 = io.input2(6 downto 0).resize(8).asUInt
       val in1_ext7_8 = io.input1(7).asBits.resize(2).asUInt
-      val in2_ext7_8 = io.input2(7).asBits.resize(2).asUInt
 
       val carry_in = Mux(io.func === ALU8Func.SUB, U"0", ccs(Flags._C).asUInt)
 
-      val sum0_6 = in1_ext0_7 + ~in2_ext0_7 + ~carry_in
+      val sum0_6 = in1_ext0_7 + (~io.input2(6 downto 0)).resize(8).asUInt + ~carry_in
       carry7 := sum0_6.msb.asUInt
 
-      val sum7 = in1_ext7_8 + ~in2_ext7_8 + carry7
+      val sum7 = in1_ext7_8 + (~io.input2(7)).asBits.resize(2).asUInt + carry7
       carry8 := sum7.msb.asUInt
 
       io.output(6 downto 0) := sum0_6(6 downto 0).asBits
@@ -218,14 +216,14 @@ object ALU8 {
               val input1 = io.input1.resize(9).asUInt
               val input2 = io.input2.resize(9).asUInt
 
-              sum9 := (input1 + ~input2 + ~carry_in)
-              sum8 := (input1(6 downto 0).resize(8) + ~input2(6 downto 0).resize(8) + ~carry_in)
-//              assert(sum9(7 downto 0).asBits === (io.input1.asSInt - io.input2.asSInt - carry_in.asSInt).asBits)
+              sum9 := (input1 + (~io.input2).resize(9).asUInt + ~carry_in)
+              sum8 := (input1(6 downto 0).resize(8) + (~input2(6 downto 0)).resize(8) + ~carry_in)
+              assert(sum9(7 downto 0).asBits === (io.input1.asUInt - io.input2.asUInt - carry_in).asBits)
               assert(io.output === sum9(7 downto 0).asBits)
-//              assert(_ccs(Flags._N) === n)
-//              assert(_ccs(Flags._Z) === z)
-//              assert(_ccs(Flags._V) === v)
-//              assert(_ccs(Flags._C) === c)
+              assert(_ccs(Flags._N) === n)
+              assert(_ccs(Flags._Z) === z)
+              assert(_ccs(Flags._V) === v)
+              assert(_ccs(Flags._C) === c)
               assert(_ccs(Flags._H) === ccs(Flags._H))
               assert(_ccs(Flags._I) === ccs(Flags._I))
             }
