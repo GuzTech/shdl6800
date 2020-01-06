@@ -4,7 +4,7 @@ import java.io.{File, FileWriter}
 import java.nio.file.Paths
 
 import org.apache.commons.io.FileUtils
-import spinal.core.HertzNumber
+import spinal.core.{Component, HertzNumber, SpinalReport}
 import spinal.lib.eda.bench.Report
 
 import scala.sys.process.Process
@@ -146,12 +146,16 @@ object YosysNextpnrFlow {
     NextpnrOptions.valid_packages(deviceName).contains(packageType)
   }
 
-  def apply(toplevelName: String,
-            deviceName: DeviceName.Value,
-            packageType: PackageType.Value,
-            buildDir: String,
-            frequencyTarget : HertzNumber = null): Report =
+  def apply[T <: Component](
+    toplevel: SpinalReport[T],
+    deviceName: DeviceName.Value,
+    packageType: PackageType.Value,
+    buildDir: String,
+    pinMappings: Map[String, String],
+    frequencyTarget : HertzNumber = null): Report =
   {
+    val toplevelName = toplevel.toplevelName
+
     if(checkPackage(deviceName, packageType)) {
       // Create a fresh new build directory
       val buildDirFile = new File(buildDir)
@@ -161,9 +165,19 @@ object YosysNextpnrFlow {
 
       // Create a constraints (.pcf) file
       val pcf = new FileWriter(Paths.get(buildDir, s"${toplevelName}.pcf").toFile)
-//      for(constraint <- constraints) {
-//        pcf.write(s"")
-//      }
+      for((name, pin) <- pinMappings) {
+        val pins = pin.split(' ')
+
+        if(pins.length == 1) {
+          pcf.write(s"set_io ${name} ${pin}\n")
+        } else {
+          for(i <- 0 to pins.length - 1) {
+            pcf.write(s"set_io ${name}[${i}] ${pins(i)}\n")
+          }
+        }
+      }
+      pcf.flush()
+      pcf.close()
 
       // Call Yosys, Nextpnr, and icepack
       val yosys = Seq(
@@ -180,7 +194,7 @@ object YosysNextpnrFlow {
           case _ => ""
         }),
         "--package", packageType.toString,
-//        "--pcf", s"${toplevelName}.pcf",
+        "--pcf", s"${toplevelName}.pcf",
         "--freq", (if (frequencyTarget != null) {(frequencyTarget / 1000000.0).toString} else {"12"}),
         "--json", s"${toplevelName}.json",
         "--asc", s"${toplevelName}.asc")
