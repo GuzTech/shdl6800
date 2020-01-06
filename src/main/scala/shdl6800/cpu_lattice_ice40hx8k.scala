@@ -21,9 +21,9 @@ class SHDL6800(val defaultClkFreq: HertzNumber,
                val fakeMem: Boolean = false) extends Component
 {
   val io = new Bundle {
-    val clk1   = in Bool
-    val clk2   = in Bool
-    val resetn = in Bool
+    val clk1   = !slowClock generate(in Bool)
+    val clk2   = !slowClock generate(in Bool)
+    val resetn = !slowClock generate(in Bool)
     val addr   = out Bits(16 bits)
     val rw     = out Bits(1 bit)
 
@@ -36,14 +36,14 @@ class SHDL6800(val defaultClkFreq: HertzNumber,
     name   = "ph1",
     config = ClockDomainConfig(
       clockEdge        = RISING,
-      resetKind        = SYNC,
+      resetKind        = ASYNC,
       resetActiveLevel = HIGH))
 
   val ph2 = ClockDomain.internal(
     name = "ph2",
     config = ClockDomainConfig(
       clockEdge        = FALLING,
-      resetKind        = SYNC,
+      resetKind        = ASYNC,
       resetActiveLevel = HIGH))
 
   if(slowClock) {
@@ -60,9 +60,9 @@ class SHDL6800(val defaultClkFreq: HertzNumber,
 
     // Hook up clocks and reset to pins
     ph1.clock := tick
-    ph1.reset := io.resetn
+    ph1.reset := clockDomain.isResetActive
     ph2.clock := ~tick
-    ph2.reset := io.resetn
+    ph2.reset := clockDomain.isResetActive
   } else {
     // Hook up clocks and reset to pins
     ph1.clock := io.clk1
@@ -98,22 +98,34 @@ class SHDL6800(val defaultClkFreq: HertzNumber,
 
 object cpu_lattice_ice40hx8k {
   def main(args: Array[String]): Unit = {
-    val design          = SpinalVerilog(new SHDL6800(defaultClkFreq = 12 MHz, slowClock = true, fakeMem = true))
+    val clockConfig     = ClockDomainConfig(
+      clockEdge        = RISING,
+      resetKind        = ASYNC,
+      resetActiveLevel = HIGH
+    )
+    val design: SpinalReport[SHDL6800] = SpinalConfig(defaultConfigForClockDomains = clockConfig).generateVerilog(
+      new SHDL6800(defaultClkFreq = 12 MHz, slowClock = true, fakeMem = true)
+    )
+//    val design          = SpinalVerilog(new SHDL6800(defaultClkFreq = 12 MHz, slowClock = true, fakeMem = true))
     val toplevelName    = design.toplevelName
     val toplevelSignals = design.toplevel.getAllIo
     toplevelSignals.foreach{ case s => println(s.toString()) }
 
-//    val pinMapping      = toplevelSignals.toMap(
-//      "io_clk1"   -> "J3",
-//      "io_clk2"   -> "G1",
-//      "io_resetn" -> "R9"
-//    )
+    val pinMapping: Map[String, String] = Map(
+      "clk"     -> "J3",
+      "reset"   -> "R9",
+      "io_addr" -> "B1 B2 C1 C2 D1 D2 E2 F1 F2 G2 H1 H2 J2 J1 K3 K1",
+      "io_led"  -> "C3 B3 C4 C5 A1 A2 B4 B5",
+      "io_rw"   -> "E4"
+    )
 
     val report = YosysNextpnrFlow(
-      toplevelName = toplevelName,
-      deviceName   = DeviceName.iCE40HX8K,
-      packageType  = PackageType.CT256,
-      buildDir     = "./build")
+      toplevel    = design,
+      deviceName  = DeviceName.iCE40HX8K,
+      packageType = PackageType.CT256,
+      pinMappings = pinMapping,
+      buildDir    = "./build"
+    )
 
     println(s"Resource usage:\n${report.getArea()}")
     println(s"\nMax clock frequency: ${report.getFMax()} MHz")
