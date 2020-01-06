@@ -1,6 +1,6 @@
 package shdl6800
 
-import lattice.{NextpnrOptions, YosysNextpnrFlow}
+import lattice._
 import spinal.core._
 
 // This is the software ROM
@@ -40,8 +40,13 @@ object cpu_lattice_ice40hx8k {
   def main(args: Array[String]): Unit = {
     val toplevelName = SpinalVerilog(new SHDL6800()).toplevelName
 
-    val report = YosysNextpnrFlow("Core", NextpnrOptions.device_options.get("iCE40HX8K").get, "./build")
+    val report = YosysNextpnrFlow(
+      toplevelName = toplevelName,
+      deviceName   = DeviceName.iCE40HX8K,
+      packageType  = PackageType.CT256,
+      buildDir     = "./build")
 
-    println(s"Max clock frequency: ${report.getFMax()} MHz")
+    println(s"Resource usage:\n${report.getArea()}")
+    println(s"\nMax clock frequency: ${report.getFMax()} MHz")
   }
 }
