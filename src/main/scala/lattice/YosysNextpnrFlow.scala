@@ -4,6 +4,7 @@ import java.io.{File, FileWriter}
 import java.nio.file.Paths
 
 import org.apache.commons.io.FileUtils
+import spinal.core.HertzNumber
 import spinal.lib.eda.bench.Report
 
 import scala.sys.process.Process
@@ -145,7 +146,12 @@ object YosysNextpnrFlow {
     NextpnrOptions.valid_packages(deviceName).contains(packageType)
   }
 
-  def apply(toplevelName: String, deviceName: DeviceName.Value, packageType: PackageType.Value, buildDir: String): Report = {
+  def apply(toplevelName: String,
+            deviceName: DeviceName.Value,
+            packageType: PackageType.Value,
+            buildDir: String,
+            frequencyTarget : HertzNumber = null): Report =
+  {
     if(checkPackage(deviceName, packageType)) {
       // Create a fresh new build directory
       val buildDirFile = new File(buildDir)
@@ -174,7 +180,8 @@ object YosysNextpnrFlow {
           case _ => ""
         }),
         "--package", packageType.toString,
-        "--pcf", s"${toplevelName}.pcf",
+//        "--pcf", s"${toplevelName}.pcf",
+        "--freq", (if (frequencyTarget != null) {(frequencyTarget / 1000000.0).toString} else {"12"}),
         "--json", s"${toplevelName}.json",
         "--asc", s"${toplevelName}.asc")
       doCmd(nextpnr, buildDir)
@@ -218,7 +225,7 @@ object YosysNextpnrFlow {
             if (lut4.nonEmpty) {
               lut4.toList.last.mkString.split(' ').last
             } else {
-              ""
+              "0"
             }
           }
           val num_dff = {
@@ -226,7 +233,7 @@ object YosysNextpnrFlow {
             if (dff.nonEmpty) {
               dff.toList.last.mkString.split(' ').last
             } else {
-              ""
+              "0"
             }
           }
           val num_dffe = {
@@ -234,7 +241,7 @@ object YosysNextpnrFlow {
             if (dffe.nonEmpty) {
               dffe.toList.last.mkString.split(' ').last
             } else {
-              ""
+              "0"
             }
           }
           val num_dffer = {
@@ -242,7 +249,15 @@ object YosysNextpnrFlow {
             if (dffer.nonEmpty) {
               dffer.toList.last.mkString.split(' ').last
             } else {
-              ""
+              "0"
+            }
+          }
+          val num_dffess = {
+            val dffess = "SB_DFFESS +([0-9]+)\\n".r.findAllIn(report)
+            if (dffess.nonEmpty) {
+              dffess.toList.last.mkString.split(' ').last
+            } else {
+              "0"
             }
           }
           val num_dffr = {
@@ -250,7 +265,7 @@ object YosysNextpnrFlow {
             if (dffr.nonEmpty) {
               dffr.toList.last.mkString.split(' ').last
             } else {
-              ""
+              "0"
             }
           }
           val num_dffs = {
@@ -258,7 +273,23 @@ object YosysNextpnrFlow {
             if (dffs.nonEmpty) {
               dffs.toList.last.mkString.split(' ').last
             } else {
-              ""
+              "0"
+            }
+          }
+          val num_dffsr = {
+            val dffsr = "SB_DFFSR +([0-9]+)\\n".r.findAllIn(report)
+            if (dffsr.nonEmpty) {
+              dffsr.toList.last.mkString.split(' ').last
+            } else {
+              "0"
+            }
+          }
+          val num_dffss = {
+            val dffss = "SB_DFFSS +([0-9]+)\\n".r.findAllIn(report)
+            if (dffss.nonEmpty) {
+              dffss.toList.last.mkString.split(' ').last
+            } else {
+              "0"
             }
           }
           val num_carry = {
@@ -266,17 +297,20 @@ object YosysNextpnrFlow {
             if (carry.nonEmpty) {
               carry.toList.last.mkString.split(' ').last
             } else {
-              ""
+              "0"
             }
           }
-          s"""Number of cells: ${num_cells}
-             |Number of LUT4:  ${num_lut4}
-             |Number of DFF:   ${num_dff}
-             |Number of DFFE:  ${num_dffe}
-             |Number of DFFER: ${num_dffer}
-             |Number of DFFR:  ${num_dffr}
-             |Number of DFFS:  ${num_dffs}
-             |Number of CARRY: ${num_carry}
+          s"""Number of cells:  ${num_cells}
+             |Number of LUT4:   ${num_lut4}
+             |Number of DFF:    ${num_dff}
+             |Number of DFFE:   ${num_dffe}
+             |Number of DFFER:  ${num_dffer}
+             |Number of DFFESS: ${num_dffess}
+             |Number of DFFR:   ${num_dffr}
+             |Number of DFFS:   ${num_dffs}
+             |Number of DFFSR:  ${num_dffsr}
+             |Number of DFFSS:  ${num_dffss}
+             |Number of CARRY:  ${num_carry}
              |""".stripMargin
         }
       }
