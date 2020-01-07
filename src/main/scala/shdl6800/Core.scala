@@ -162,9 +162,6 @@ case class Core(verification: Option[Verification] = None) extends Component {
   ccs           := alu.io.ccs
 
   reset_handler()
-  end_instr_flag_handler()
-  maybe_do_formal_verification()
-
   when(reset_state === 3) {
     when(cycle === 0) {
       fetch()
@@ -172,6 +169,8 @@ case class Core(verification: Option[Verification] = None) extends Component {
       execute()
     }
   }
+  maybe_do_formal_verification()
+  end_instr_flag_handler()
 
   def src_bus_setup[T <: SpinalEnum](reg_map: Map[SpinalEnumElement[T], (Bits, Boolean)], bus: Bits, selector: SpinalEnumCraft[T]): Unit = {
     switch(selector) {
@@ -454,8 +453,8 @@ object Core {
               0xFFFE -> 0x12, // Reset vector high
               0xFFFF -> 0x34, // Reset vector low
               0x1234 -> 0x7E, // JMP ext
-              0x1235 -> 0xA0, // Address high
-              0x1236 -> 0x10, // Address low
+              0x1235 -> 0x12, // Address high
+              0x1236 -> 0x34, // Address low
               0xA010 -> 0x01) // NOP
 
             for (i <- 0 to 16) {
