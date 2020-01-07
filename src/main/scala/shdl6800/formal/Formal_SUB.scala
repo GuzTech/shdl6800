@@ -17,41 +17,23 @@
 
 package shdl6800.formal
 
-import shdl6800.Flags
+import shdl6800.Consts.Flags
 import spinal.core._
 
-class Formal_SUB extends Verification {
+class Formal_SUB extends AluVerification {
   override def valid(instr: Bits): Bool = {
-    instr === M"1-1100-0"
+    instr === M"1---_00-0"
   }
 
   override def check(instr: Bits, data: FormalData): Unit = {
     // Asserts are not possible with combinatorial signals in SpinalHDL yet...
 
-    val b         = instr(6)
-    val pre_input = Mux(b, data.pre_b, data.pre_a)
-    val output    = Mux(b, data.post_b, data.post_a)
+    val (input1, input2, actual_output) = common_check(instr, data)
 
     val carry_in = UInt(1 bit)
     val sum9     = UInt(9 bits)
     val sum8     = UInt(8 bits)
     val with_carry = (data.instr(1) === True)
-
-    when(b) {
-      assert(data.post_a === data.pre_a)
-    } otherwise {
-      assert(data.post_b === data.pre_b)
-    }
-
-    assert(data.post_x === data.pre_x)
-    assert(data.post_sp === data.pre_sp)
-    assert(data.addresses_written === 0)
-
-    assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 3).asBits)
-    assert(data.addresses_read === 3)
-    assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
-    assert(data.read_addr(1) === data.plus16(data.pre_pc.asSInt, 2).asBits)
-    assert(data.read_addr(2) === Cat(data.read_data(0), data.read_data(1)))
 
     val n = sum9(7)
     val c = ~sum9(8)
@@ -59,7 +41,7 @@ class Formal_SUB extends Verification {
     val v = (sum8(7) ^ sum9(8))
 
     when(with_carry) {
-      carry_in := data.pre_ccs(Flags._C).asUInt
+      carry_in := data.pre_ccs(Flags.C).asUInt
     } otherwise {
       carry_in := 0
     }
@@ -68,12 +50,12 @@ class Formal_SUB extends Verification {
      * because in version 1.3.6 of SpinalHDL, the carry-out is not generated.
      * The development version does have addition with carry-out, but we're
      * sticking to the latest stable release. */
-    val input1 = pre_input.resize(9).asUInt
-    val input2 = data.read_data(2).resize(9).asUInt
+    val inp1 = input1.resize(9).asUInt
+    val inp2 = input2.resize(9).asUInt
 
-    sum9 := (input1 + (~data.read_data(2)).resize(9).asUInt + ~carry_in)
-    sum8 := (input1(6 downto 0).resize(8) + (~input2(6 downto 0)).resize(8) + ~carry_in)
-    assert(output === sum9(7 downto 0).asBits)
+    sum9 := (inp1 + ~inp2 + ~carry_in)
+    sum8 := (inp1(6 downto 0).resize(8) + (~inp2(6 downto 0)).resize(8) + ~carry_in)
+    assert(actual_output === sum9(7 downto 0).asBits)
 
     assertFlags(
       data.post_ccs,

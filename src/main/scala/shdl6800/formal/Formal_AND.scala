@@ -19,42 +19,22 @@ package shdl6800.formal
 
 import spinal.core._
 
-class Formal_AND extends Verification {
+class Formal_AND extends AluVerification {
   override def valid(instr: Bits): Bool = {
-    instr === M"1-11_0100"
+    instr === M"1---_0100"
   }
 
   override def check(instr: Bits, data: FormalData): Unit = {
     // Asserts are not possible with combinatorial signals in SpinalHDL yet...
 
-    val b         = instr(6)
-    val pre_input = Mux(b, data.pre_b, data.pre_a)
-    val output    = Mux(b, data.post_b, data.post_a)
-
-    when(b) {
-      assert(data.post_a === data.pre_a)
-    } otherwise {
-      assert(data.post_b === data.pre_b)
-    }
-
-    assert(data.post_x === data.pre_x)
-    assert(data.post_sp === data.pre_sp)
-    assert(data.addresses_written === 0)
-
-    assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 3).asBits)
-    assert(data.addresses_read === 3)
-    assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
-    assert(data.read_addr(1) === data.plus16(data.pre_pc.asSInt, 2).asBits)
-    assert(data.read_addr(2) === Cat(data.read_data(0), data.read_data(1)))
-
-    val input1 = pre_input
-    val input2 = data.read_data(2)
+    val (input1, input2, actual_output) = common_check(instr, data)
+    val output                          = input1 & input2
 
     val z = output === 0
     val n = output(7)
     val v = False
 
-    assert(output === (input1 & input2))
+    assert(actual_output === output)
     assertFlags(
       data.post_ccs,
       data.pre_ccs,

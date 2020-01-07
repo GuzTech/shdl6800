@@ -19,42 +19,28 @@ package shdl6800.formal
 
 import spinal.core._
 
-class Formal_CMP extends Verification {
+class Formal_CMP extends AluVerification {
   override def valid(instr: Bits): Bool = {
-    instr === M"1-11_0001"
+    instr === M"1---_0001"
   }
 
   override def check(instr: Bits, data: FormalData): Unit = {
     // Asserts are not possible with combinatorial signals in SpinalHDL yet...
 
-    val b         = instr(6)
-    val pre_input = Mux(b, data.pre_b, data.pre_a)
-
-    assert(data.post_a === data.pre_a)
-    assert(data.post_b === data.pre_b)
-    assert(data.post_x === data.pre_x)
-    assert(data.post_sp === data.pre_sp)
-    assert(data.addresses_written === 0)
-
-    assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 3).asBits)
-    assert(data.addresses_read === 3)
-    assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
-    assert(data.read_addr(1) === data.plus16(data.pre_pc.asSInt, 2).asBits)
-    assert(data.read_addr(2) === Cat(data.read_data(0), data.read_data(1)))
-
-    val input1  = pre_input.asUInt
-    val input2  = data.read_data(2).asUInt
-    val sinput1 = pre_input.asSInt
-    val sinput2 = data.read_data(2).asSInt
+    val (input1, input2, actual_output) = common_check(instr, data)
+    val sinput1 = input1.asSInt
+    val sinput2 = input2.asSInt
+    val output  = input1
 
     val z = input1 === input2
-    val n = (input1 - input2)(7)
+    val n = (input1.asUInt - input2.asUInt)(7)
 
     // GE is true if and only if N ^ V == 0 (i.e. N == V)
     val ge = sinput1 >= sinput2
     val v  = Mux(ge, n, ~n)
-    val c  = (input1 < input2)
+    val c  = (input1.asUInt < input2.asUInt)
 
+    assert(actual_output === output)
     assertFlags(
       data.post_ccs,
       data.pre_ccs,

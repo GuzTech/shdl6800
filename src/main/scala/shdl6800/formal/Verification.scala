@@ -17,7 +17,7 @@
 
 package shdl6800.formal
 
-import shdl6800.Flags
+import shdl6800.Consts.Flags
 import spinal.core._
 
 class Verification {
@@ -36,12 +36,12 @@ class Verification {
             C: Option[Bool] = None): Bits = {
     val result = Bits(8 bits)
 
-    val h = if(H.isDefined) H.get else prev(Flags._H)
-    val i = if(I.isDefined) I.get else prev(Flags._I)
-    val n = if(N.isDefined) N.get else prev(Flags._N)
-    val z = if(Z.isDefined) Z.get else prev(Flags._Z)
-    val v = if(V.isDefined) V.get else prev(Flags._V)
-    val c = if(C.isDefined) C.get else prev(Flags._C)
+    val h = if(H.isDefined) H.get else prev(Flags.H)
+    val i = if(I.isDefined) I.get else prev(Flags.I)
+    val n = if(N.isDefined) N.get else prev(Flags.N)
+    val z = if(Z.isDefined) Z.get else prev(Flags.Z)
+    val v = if(V.isDefined) V.get else prev(Flags.V)
+    val c = if(C.isDefined) C.get else prev(Flags.C)
 
     result := (
       7 -> True,
@@ -69,12 +69,12 @@ class Verification {
 
     assert(post_flags(7) === expectedFlags(7))
     assert(post_flags(6) === expectedFlags(6))
-    assert(post_flags(Flags._H) === expectedFlags(Flags._H))
-    assert(post_flags(Flags._I) === expectedFlags(Flags._I))
-    assert(post_flags(Flags._N) === expectedFlags(Flags._N))
-    assert(post_flags(Flags._Z) === expectedFlags(Flags._Z))
-    assert(post_flags(Flags._V) === expectedFlags(Flags._V))
-    assert(post_flags(Flags._C) === expectedFlags(Flags._C))
+    assert(post_flags(Flags.H) === expectedFlags(Flags.H))
+    assert(post_flags(Flags.I) === expectedFlags(Flags.I))
+    assert(post_flags(Flags.N) === expectedFlags(Flags.N))
+    assert(post_flags(Flags.Z) === expectedFlags(Flags.Z))
+    assert(post_flags(Flags.V) === expectedFlags(Flags.V))
+    assert(post_flags(Flags.C) === expectedFlags(Flags.C))
   }
 }
 

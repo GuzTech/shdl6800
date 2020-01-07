@@ -20,57 +20,62 @@ package shdl6800.formal
 import shdl6800.Consts.ModeBits
 import spinal.core._
 
-class Formal_STA extends Verification {
-  override def valid(instr: Bits): Bool = {
-    (instr === M"1--1_0111") || (instr === M"1-10_0111")
-  }
+class AluVerification extends Verification {
+  /* Does common checks for ALU instructions.
+   *
+   * Returns a tuple of Bits: (input1, input2, actual_output). The caller should use those
+   * values to verify flags and expected output.
+   */
+  def common_check(instr: Bits, data: FormalData): (Bits, Bits, Bits) = {
+    val mode          = instr(4 to 5)
+    val b             = instr(6)
+    val input1        = Mux(b, data.pre_b, data.pre_a)
+    val input2        = Bits(8 bits)
+    val actual_output = Mux(b, data.post_b, data.post_a)
 
-  override def check(instr: Bits, data: FormalData): Unit = {
-    // Asserts are not possible with combinatorial signals in SpinalHDL yet...
-    val mode  = instr(4 to 5)
-    val b     = instr(6)
-    val input = Mux(b, data.pre_b, data.pre_a)
+    // Give this a default value, or else the compiler detects a latch
+    input2 := 0
 
-    assert(data.post_a === data.pre_a)
-    assert(data.post_b === data.pre_b)
+    when(b) {
+      assert(data.post_a === data.pre_a)
+    } otherwise {
+      assert(data.post_b === data.pre_b)
+    }
+
     assert(data.post_x === data.pre_x)
     assert(data.post_sp === data.pre_sp)
+    assert(data.addresses_written === 0)
 
     when(mode === ModeBits.DIRECT.asBits) {
       assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 2).asBits)
-
-      assert(data.addresses_read === 1)
-      assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
-
-      assert(data.addresses_written === 1)
-      assert(data.write_addr(0) === data.read_data(0))
-      assert(data.write_data(0) === input)
-    }.elsewhen(mode === ModeBits.EXTENDED.asBits) {
-      assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 3).asBits)
-
       assert(data.addresses_read === 2)
       assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
+      assert(data.read_addr(1) === data.read_data(0).resize(16))
+
+      input2 := data.read_data(1)
+    }.elsewhen(mode === ModeBits.EXTENDED.asBits) {
+      assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 3).asBits)
+      assert(data.addresses_read === 3)
+      assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
       assert(data.read_addr(1) === data.plus16(data.pre_pc.asSInt, 2).asBits)
+      assert(data.read_addr(2) === Cat(data.read_data(0), data.read_data(1)))
 
-      assert(data.addresses_written === 1)
-      assert(data.write_addr(0) === Cat(data.read_data(0), data.read_data(1)))
-      assert(data.write_data(0) === input)
-    }.elsewhen(mode === ModeBits.INDEXED.asBits) {
+      input2 := data.read_data(2)
+    }.elsewhen(mode === ModeBits.IMMEDIATE.asBits) {
       assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 2).asBits)
-
       assert(data.addresses_read === 1)
       assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
 
-      assert(data.addresses_written === 1)
-      assert(data.write_addr(0) === data.plus16(data.pre_x.asSInt, data.read_data(0).asSInt).asBits)
-      assert(data.write_data(0) === input)
+      input2 := data.read_data(0)
+    }.elsewhen(mode === ModeBits.INDEXED.asBits) {
+      assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 2).asBits)
+      assert(data.addresses_read === 2)
+      assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
+      assert(data.read_addr(1) === data.plus16(data.pre_x.asSInt, data.read_data(0).asSInt).asBits)
+
+      input2 := data.read_data(1)
     }
 
-    assertFlags(
-      data.post_ccs,
-      data.pre_ccs,
-      Z = Some(input === 0),
-      N = Some(input(7)),
-      V = Some(False))
+    (input1, input2, actual_output)
   }
 }

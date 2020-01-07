@@ -19,38 +19,27 @@ package shdl6800.formal
 
 import spinal.core._
 
-class Formal_LDA extends Verification {
+class Formal_LDA extends AluVerification {
   override def valid(instr: Bits): Bool = {
-    instr === M"1-11_0110"
+    instr === M"1---_0110"
   }
 
   override def check(instr: Bits, data: FormalData): Unit = {
     // Asserts are not possible with combinatorial signals in SpinalHDL yet...
 
-    val b      = instr(6)
-    val output = Mux(b, data.post_b, data.post_a)
+    val (input1, input2, actual_output) = common_check(instr, data)
+    val output                          = input2
 
-    when(b) {
-      assert(data.post_a === data.pre_a)
-    } otherwise {
-      assert(data.post_b === data.pre_b)
-    }
+    val z = output === 0
+    val n = output(7)
+    val v = False
 
-    assert(data.post_x === data.pre_x)
-    assert(data.post_sp === data.pre_sp)
-    assert(data.addresses_written === 0)
-
-    assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 3).asBits)
-    assert(data.addresses_read === 3)
-    assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
-    assert(data.read_addr(1) === data.plus16(data.pre_pc.asSInt, 2).asBits)
-    assert(data.read_addr(2) === Cat(data.read_data(0), data.read_data(1)))
     assert(output === data.read_data(2))
     assertFlags(
       data.post_ccs,
       data.pre_ccs,
-      Z = Some(output === 0),
-      N = Some(output(7)),
-      V = Some(False))
+      Z = Some(z),
+      N = Some(n),
+      V = Some(v))
   }
 }
