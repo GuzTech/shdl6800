@@ -13,7 +13,7 @@ I also have some experience with SpinalHDL, and while watching his videos, it lo
 
 - [Part 3](https://www.youtube.com/watch?v=aLQqOxnVMOQ) is [completed](https://github.com/GuzTech/shdl6800/tree/part_3).
 - [Part 4](https://www.youtube.com/watch?v=xqMtyCu4lME) is [completed](https://github.com/GuzTech/shdl6800/tree/part_4).
-- [Part 5](https://www.youtube.com/watch?v=9MMb9dSnNvo) is completed as far as the HDL. The FPGA specific code is not yet written.
+- [Part 5](https://www.youtube.com/watch?v=9MMb9dSnNvo) is completed as far as the HDL and the FPGA specific code. Code for device and package specification, and pin constraints have also been implemented but needs a bit more testing. The implementation is [working](https://twitter.com/BitlogIT/status/1214352859376029696) though.
 
 The following instructions have been implemented:
 
