@@ -16,16 +16,16 @@
  */
 
 /* Generate Core (Verilog)
- * sby "runMain shdl6800.CoreVerilog"
- *
- * Generate Core (VHDL)
- * sby "runMain shdl6800.CoreVHDL"
+ * sby "runMain shdl6800.Core"
  *
  * Generate Core with formal proofs (SystemVerilog)
- * sby "runMain shdl6800.CoreVerilogWithFormal"
+ * sby "runMain shdl6800.Core <name of instruction>"
+ *
+ * For example:
+ * sby "runMain shdl6800.Core lda
  *
  * Run simulation (by generating Verilator code)
- * sby "runMain shdl6800.CoreSim"
+ * sby "runMain shdl6800.Core sim"
  */
 
 package shdl6800
@@ -39,20 +39,20 @@ import spinal.core._
 object Reg8 extends SpinalEnum {
   val NONE, A, B, XH, XL, SPH, SPL, PCH, PCL, TMP8, TMP16H, TMP16L, DIN, DOUT = newElement()
   defaultEncoding = SpinalEnumEncoding("staticEncoding")(
-    NONE   -> 0x0000,
-    A      -> 0x0001,
-    B      -> 0x0002,
-    XH     -> 0x0004,
-    XL     -> 0x0008,
-    SPH    -> 0x0010,
-    SPL    -> 0x0020,
-    PCH    -> 0x0040,
-    PCL    -> 0x0080,
-    TMP8   -> 0x0100,
-    TMP16H -> 0x0200,
-    TMP16L -> 0x0400,
-    DIN    -> 0x0800,
-    DOUT   -> 0x1000
+    NONE   ->  0,
+    A      ->  1,
+    B      ->  2,
+    XH     ->  3,
+    XL     ->  4,
+    SPH    ->  5,
+    SPL    ->  6,
+    PCH    ->  7,
+    PCL    ->  8,
+    TMP8   ->  9,
+    TMP16H -> 10,
+    TMP16L -> 11,
+    DIN    -> 12,
+    DOUT   -> 13
   )
 }
 
@@ -61,12 +61,12 @@ object Reg8 extends SpinalEnum {
 object Reg16 extends SpinalEnum {
   val NONE, X, SP, PC, TMP16, ADDR = newElement()
   defaultEncoding = SpinalEnumEncoding("staticEncoding") (
-    NONE  -> 0x00,
-    X     -> 0x01,
-    SP    -> 0x02,
-    PC    -> 0x04,
-    TMP16 -> 0x08,
-    ADDR  -> 0x10
+    NONE  -> 0,
+    X     -> 1,
+    SP    -> 2,
+    PC    -> 3,
+    TMP16 -> 4,
+    ADDR  -> 5
   )
 }
 
