@@ -19,15 +19,7 @@ package shdl6800
 
 import spinal.core._
 
-// Flags
-object Flags {
-  val _H = 5
-  val _I = 4
-  val _N = 3
-  val _Z = 2
-  val _V = 1
-  val _C = 0
-}
+import shdl6800.Consts.Flags
 
 object ALU8Func extends SpinalEnum {
   val NONE, LD, ADD, ADC, SUB, SBC, AND, EOR, ORA = newElement()
@@ -78,9 +70,9 @@ class ALU8 extends Component {
   switch(io.func) {
     is(ALU8Func.LD) {
       io.output := io.input2
-      _ccs(Flags._Z) := (io.output === 0)
-      _ccs(Flags._N) := (io.output(7))
-      _ccs(Flags._V) := False
+      _ccs(Flags.Z) := (io.output === 0)
+      _ccs(Flags.N) := (io.output(7))
+      _ccs(Flags.V) := False
     }
     is(ALU8Func.ADD, ALU8Func.ADC) {
       /* Version 1.3.6 of SpinalHDL does not store the carry-out,
@@ -93,7 +85,7 @@ class ALU8 extends Component {
       val in1_ext7_8 = io.input1(7).asBits.resize(2).asUInt
       val in2_ext7_8 = io.input2(7).asBits.resize(2).asUInt
 
-      val carry_in = Mux(io.func === ALU8Func.ADD, U"0", ccs(Flags._C).asUInt)
+      val carry_in = Mux(io.func === ALU8Func.ADD, U"0", ccs(Flags.C).asUInt)
 
       val sum0_3 = in1_ext0_4 + in2_ext0_4 + carry_in
       carry4 := sum0_3.msb.asUInt
@@ -109,11 +101,11 @@ class ALU8 extends Component {
       io.output(7)          := sum7(0)
 
       overflow := carry7 ^ carry8
-      _ccs(Flags._H) := carry4.asBool
-      _ccs(Flags._N) := io.output(7)
-      _ccs(Flags._Z) := io.output === 0
-      _ccs(Flags._V) := overflow.asBool
-      _ccs(Flags._C) := carry8.asBool
+      _ccs(Flags.H) := carry4.asBool
+      _ccs(Flags.N) := io.output(7)
+      _ccs(Flags.Z) := io.output === 0
+      _ccs(Flags.V) := overflow.asBool
+      _ccs(Flags.C) := carry8.asBool
     }
     is(ALU8Func.SUB, ALU8Func.SBC) {
       /* Version 1.3.6 of SpinalHDL does not store the carry-out,
@@ -122,7 +114,7 @@ class ALU8 extends Component {
       val in1_ext0_7 = io.input1(6 downto 0).resize(8).asUInt
       val in1_ext7_8 = io.input1(7).asBits.resize(2).asUInt
 
-      val carry_in = Mux(io.func === ALU8Func.SUB, U"0", ccs(Flags._C).asUInt)
+      val carry_in = Mux(io.func === ALU8Func.SUB, U"0", ccs(Flags.C).asUInt)
 
       val sum0_6 = in1_ext0_7 + (~io.input2(6 downto 0)).resize(8).asUInt + ~carry_in
       carry7 := sum0_6.msb.asUInt
@@ -134,28 +126,28 @@ class ALU8 extends Component {
       io.output(7)          := sum7(0)
 
       overflow := carry7 ^ carry8
-      _ccs(Flags._N) := io.output(7)
-      _ccs(Flags._Z) := io.output === 0
-      _ccs(Flags._V) := overflow.asBool
-      _ccs(Flags._C) := ~carry8.asBool
+      _ccs(Flags.N) := io.output(7)
+      _ccs(Flags.Z) := io.output === 0
+      _ccs(Flags.V) := overflow.asBool
+      _ccs(Flags.C) := ~carry8.asBool
     }
     is(ALU8Func.AND) {
       io.output      := io.input1 & io.input2
-      _ccs(Flags._Z) := io.output === 0
-      _ccs(Flags._N) := io.output(7)
-      _ccs(Flags._V) := False
+      _ccs(Flags.Z) := io.output === 0
+      _ccs(Flags.N) := io.output(7)
+      _ccs(Flags.V) := False
     }
     is(ALU8Func.EOR) {
       io.output      := io.input1 ^ io.input2
-      _ccs(Flags._Z) := io.output === 0
-      _ccs(Flags._N) := io.output(7)
-      _ccs(Flags._V) := False
+      _ccs(Flags.Z) := io.output === 0
+      _ccs(Flags.N) := io.output(7)
+      _ccs(Flags.V) := False
     }
     is(ALU8Func.ORA) {
       io.output      := io.input1 | io.input2
-      _ccs(Flags._Z) := io.output === 0
-      _ccs(Flags._N) := io.output(7)
-      _ccs(Flags._V) := False
+      _ccs(Flags.Z) := io.output === 0
+      _ccs(Flags.N) := io.output(7)
+      _ccs(Flags.V) := False
     }
     default {
       io.output := 0
@@ -193,7 +185,7 @@ object ALU8 {
               when(io.func === ALU8Func.ADD) {
                 carry_in := 0
               } otherwise {
-                carry_in := ccs(Flags._C).asUInt
+                carry_in := ccs(Flags.C).asUInt
               }
 
               val h = sum5(4)
@@ -213,18 +205,18 @@ object ALU8 {
               sum8 := (input1(6 downto 0).resize(8) + input2(6 downto 0).resize(8) + carry_in)
               sum5 := (input1(3 downto 0).resize(5) + input2(3 downto 0).resize(5) + carry_in)
               assert(io.output === sum9(7 downto 0).asBits)
-              assert(_ccs(Flags._H) === h)
-              assert(_ccs(Flags._N) === n)
-              assert(_ccs(Flags._Z) === z)
-              assert(_ccs(Flags._V) === v)
-              assert(_ccs(Flags._C) === c)
-              assert(_ccs(Flags._I) === ccs(Flags._I))
+              assert(_ccs(Flags.H) === h)
+              assert(_ccs(Flags.N) === n)
+              assert(_ccs(Flags.Z) === z)
+              assert(_ccs(Flags.V) === v)
+              assert(_ccs(Flags.C) === c)
+              assert(_ccs(Flags.I) === ccs(Flags.I))
             }
             is(ALU8Func.SUB, ALU8Func.SBC) {
               when(io.func === ALU8Func.SUB) {
                 carry_in := 0
               } otherwise {
-                carry_in := ccs(Flags._C).asUInt
+                carry_in := ccs(Flags.C).asUInt
               }
 
               val n = sum9(7)
@@ -243,12 +235,12 @@ object ALU8 {
               sum8 := (input1(6 downto 0).resize(8) + (~input2(6 downto 0)).resize(8) + ~carry_in)
               assert(sum9(7 downto 0).asBits === (io.input1.asUInt - io.input2.asUInt - carry_in).asBits)
               assert(io.output === sum9(7 downto 0).asBits)
-              assert(_ccs(Flags._N) === n)
-              assert(_ccs(Flags._Z) === z)
-              assert(_ccs(Flags._V) === v)
-              assert(_ccs(Flags._C) === c)
-              assert(_ccs(Flags._H) === ccs(Flags._H))
-              assert(_ccs(Flags._I) === ccs(Flags._I))
+              assert(_ccs(Flags.N) === n)
+              assert(_ccs(Flags.Z) === z)
+              assert(_ccs(Flags.V) === v)
+              assert(_ccs(Flags.C) === c)
+              assert(_ccs(Flags.H) === ccs(Flags.H))
+              assert(_ccs(Flags.I) === ccs(Flags.I))
             }
           }
         }
