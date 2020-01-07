@@ -24,6 +24,7 @@ import org.apache.commons.io.FileUtils
 import spinal.core.{Component, HertzNumber, SpinalReport}
 import spinal.lib.eda.bench.Report
 
+import scala.collection.mutable.ListBuffer
 import scala.sys.process.Process
 
 object DeviceName extends Enumeration {
@@ -133,30 +134,30 @@ object YosysNextpnrFlow {
 
   def doCmd(cmd: String): Unit = {
     if(isWindows)
-      Process("cmd /C " + cmd) !!
+      Process("cmd /C " + cmd) !
     else
-      Process(cmd) !!
+      Process(cmd) !
   }
 
   def doCmd(cmd: String, path: String): Unit = {
     if(isWindows)
-      Process("cmd /C " + cmd, new java.io.File(path)) !!
+      Process("cmd /C " + cmd, new java.io.File(path)) !
     else
-      Process(cmd, new java.io.File((path))) !!
+      Process(cmd, new java.io.File((path))) !
   }
 
   def doCmd(cmd: Seq[String]): Unit = {
     if(isWindows)
-      Process(Seq("cmd /C ") ++ cmd) !!
+      Process(Seq("cmd /C ") ++ cmd) !
     else
-      Process(cmd) !!
+      Process(cmd) !
   }
 
   def doCmd(cmd: Seq[String], path: String): Unit = {
     if(isWindows)
-      Process(Seq("cmd /C ") ++ cmd, new java.io.File(path)) !!
+      Process(Seq("cmd /C ") ++ cmd, new java.io.File(path)) !
     else
-      Process(cmd, new java.io.File((path))) !!
+      Process(cmd, new java.io.File((path))) !
   }
 
   def checkPackage(deviceName: DeviceName.Value, packageType: PackageType.Value): Boolean = {
@@ -188,7 +189,7 @@ object YosysNextpnrFlow {
         if(pins.length == 1) {
           pcf.write(s"set_io ${name} ${pin}\n")
         } else {
-          for(i <- 0 to pins.length - 1) {
+          for(i <- pins.indices) {
             pcf.write(s"set_io ${name}[${i}] ${pins(i)}\n")
           }
         }
@@ -221,14 +222,31 @@ object YosysNextpnrFlow {
       new Report {
         override def getFMax(): Double = {
           import scala.io.Source
-          val report = Source.fromFile(s"${buildDir + "/" + toplevelName}.tim").getLines().mkString
+          val report = Source.fromFile(s"${buildDir + "/" + toplevelName}.tim").getLines().mkString("\n")
           val max_freq = try {
-            val all_freqs = "[0-9]+.[0-9]+ MHz ".r.findAllIn(report)
+            //val all_freqs = "[0-9]+.[0-9]+ MHz ".r.findAllIn(report)
+            val all_freqs = "Max frequency for clock\\s*'.+': ([0-9]+)\\.([0-9]+)".r.findAllIn(report)
             if (all_freqs.nonEmpty) {
               val list = all_freqs.toList
+              /* We divide by two, because the first half of the lines contain
+               * frequencies after simulated placement.
+               */
+              val num_lines = list.length / 2
 
-              // The last one is the actual maximum clock frequency
-              list.tail.mkString.split(' ').head.toDouble
+              if(num_lines > 1) {
+                val freqs = new ListBuffer[Double]
+
+                // Go through all reported frequencies
+                for (i <- num_lines until list.length) {
+                  freqs += list(i).split(' ').last.toDouble
+                }
+
+                // And take the lowest number
+                freqs.min
+              } else {
+                // Take the last one
+                list.last.split(' ').last.toDouble
+              }
             } else {
               // If nothing matches the regex, then something went wrong.
               -1.0
@@ -241,18 +259,18 @@ object YosysNextpnrFlow {
 
         override def getArea(): String = {
           import scala.io.Source
-          val report = Source.fromFile(s"${buildDir + "/" + toplevelName}.rpt").getLines().mkString("\n")
+          val report_yosys = Source.fromFile(s"${buildDir + "/" + toplevelName}.rpt").getLines().mkString("\n")
 
           val num_cells = {
-            val cells = "cells: +([0-9]+)\\n".r.findAllIn(report)
+            val cells = "cells: +([0-9]+)\\n".r.findAllIn(report_yosys)
             if (cells.nonEmpty) {
               cells.toList.last.mkString.split(' ').last
             } else {
-              ""
+              "0"
             }
           }
           val num_lut4 = {
-            val lut4 = "SB_LUT4 +([0-9]+)\\n".r.findAllIn(report)
+            val lut4 = "SB_LUT4 +([0-9]+)\\n".r.findAllIn(report_yosys)
             if (lut4.nonEmpty) {
               lut4.toList.last.mkString.split(' ').last
             } else {
@@ -260,7 +278,7 @@ object YosysNextpnrFlow {
             }
           }
           val num_dff = {
-            val dff = "SB_DFF +([0-9]+)\\n".r.findAllIn(report)
+            val dff = "SB_DFF +([0-9]+)\\n".r.findAllIn(report_yosys)
             if (dff.nonEmpty) {
               dff.toList.last.mkString.split(' ').last
             } else {
@@ -268,7 +286,7 @@ object YosysNextpnrFlow {
             }
           }
           val num_dffe = {
-            val dffe = "SB_DFFE +([0-9]+)\\n".r.findAllIn(report)
+            val dffe = "SB_DFFE +([0-9]+)\\n".r.findAllIn(report_yosys)
             if (dffe.nonEmpty) {
               dffe.toList.last.mkString.split(' ').last
             } else {
@@ -276,7 +294,7 @@ object YosysNextpnrFlow {
             }
           }
           val num_dffer = {
-            val dffer = "SB_DFFER +([0-9]+)\\n".r.findAllIn(report)
+            val dffer = "SB_DFFER +([0-9]+)\\n".r.findAllIn(report_yosys)
             if (dffer.nonEmpty) {
               dffer.toList.last.mkString.split(' ').last
             } else {
@@ -284,7 +302,7 @@ object YosysNextpnrFlow {
             }
           }
           val num_dffess = {
-            val dffess = "SB_DFFESS +([0-9]+)\\n".r.findAllIn(report)
+            val dffess = "SB_DFFESS +([0-9]+)\\n".r.findAllIn(report_yosys)
             if (dffess.nonEmpty) {
               dffess.toList.last.mkString.split(' ').last
             } else {
@@ -292,7 +310,7 @@ object YosysNextpnrFlow {
             }
           }
           val num_dffr = {
-            val dffr = "SB_DFFR +([0-9]+)\\n".r.findAllIn(report)
+            val dffr = "SB_DFFR +([0-9]+)\\n".r.findAllIn(report_yosys)
             if (dffr.nonEmpty) {
               dffr.toList.last.mkString.split(' ').last
             } else {
@@ -300,7 +318,7 @@ object YosysNextpnrFlow {
             }
           }
           val num_dffs = {
-            val dffs = "SB_DFFS +([0-9]+)\\n".r.findAllIn(report)
+            val dffs = "SB_DFFS +([0-9]+)\\n".r.findAllIn(report_yosys)
             if (dffs.nonEmpty) {
               dffs.toList.last.mkString.split(' ').last
             } else {
@@ -308,7 +326,7 @@ object YosysNextpnrFlow {
             }
           }
           val num_dffsr = {
-            val dffsr = "SB_DFFSR +([0-9]+)\\n".r.findAllIn(report)
+            val dffsr = "SB_DFFSR +([0-9]+)\\n".r.findAllIn(report_yosys)
             if (dffsr.nonEmpty) {
               dffsr.toList.last.mkString.split(' ').last
             } else {
@@ -316,7 +334,7 @@ object YosysNextpnrFlow {
             }
           }
           val num_dffss = {
-            val dffss = "SB_DFFSS +([0-9]+)\\n".r.findAllIn(report)
+            val dffss = "SB_DFFSS +([0-9]+)\\n".r.findAllIn(report_yosys)
             if (dffss.nonEmpty) {
               dffss.toList.last.mkString.split(' ').last
             } else {
@@ -324,14 +342,60 @@ object YosysNextpnrFlow {
             }
           }
           val num_carry = {
-            val carry = "SB_CARRY +[0-9]+\\s".r.findAllIn(report)
+            val carry = "SB_CARRY +[0-9]+\\s".r.findAllIn(report_yosys)
             if (carry.nonEmpty) {
               carry.toList.last.mkString.split(' ').last
             } else {
               "0"
             }
           }
-          s"""Number of cells:  ${num_cells}
+
+          val report_nextpnr = Source.fromFile(s"${buildDir + "/" + toplevelName}.tim").getLines().mkString("\n")
+
+          val num_LC = {
+            val cells = "ICESTORM_LC: +([0-9]+)/ +([0-9]+) +([0-9]+)\\%".r.findAllIn(report_nextpnr)
+            if (cells.nonEmpty) {
+              cells.toList.last.replaceAll("ICESTORM_LC:\\s+", "")
+            } else {
+              "0"
+            }
+          }
+          val num_RAM = {
+            val ram = "ICESTORM_RAM: +([0-9]+)/ +([0-9]+) +([0-9]+)\\%".r.findAllIn(report_nextpnr)
+            if (ram.nonEmpty) {
+              ram.toList.last.replaceAll("ICESTORM_RAM:\\s+", "")
+            } else {
+              "0"
+            }
+          }
+          val num_IO = {
+            val io = "SB_IO: +([0-9]+)/ +([0-9]+) +([0-9]+)\\%".r.findAllIn(report_nextpnr)
+            if (io.nonEmpty) {
+              io.toList.last.replaceAll("SB_IO:\\s+", "")
+            } else {
+              "0"
+            }
+          }
+          val num_GB = {
+            val gb = "SB_GB: +([0-9]+)/ +([0-9]+) +([0-9]+)\\%".r.findAllIn(report_nextpnr)
+            if (gb.nonEmpty) {
+              gb.toList.last.replaceAll("SB_GB:\\s+", "")
+            } else {
+              "0"
+            }
+          }
+          val num_PLL = {
+            val gb = "ICESTORM_PLL: +([0-9]+)/ +([0-9]+) +([0-9]+)\\%".r.findAllIn(report_nextpnr)
+            if (gb.nonEmpty) {
+              gb.toList.last.replaceAll("ICESTORM_PLL:\\s+", "")
+            } else {
+              "0"
+            }
+          }
+
+          // Finally return the utilization
+          s"""Before PnR:
+             |Number of cells:  ${num_cells}
              |Number of LUT4:   ${num_lut4}
              |Number of DFF:    ${num_dff}
              |Number of DFFE:   ${num_dffe}
@@ -342,6 +406,13 @@ object YosysNextpnrFlow {
              |Number of DFFSR:  ${num_dffsr}
              |Number of DFFSS:  ${num_dffss}
              |Number of CARRY:  ${num_carry}
+             |\n
+             |After PnR:
+             |Number of cells:  ${num_LC}
+             |Number of RAM:    ${num_RAM}
+             |Number of IO:     ${num_IO}
+             |Number of GB:     ${num_GB}
+             |Number of PLL:    ${num_PLL}
              |""".stripMargin
         }
       }
