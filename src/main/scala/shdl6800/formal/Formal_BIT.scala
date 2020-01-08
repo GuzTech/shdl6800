@@ -28,7 +28,7 @@ class Formal_BIT extends AluVerification {
     // Asserts are not possible with combinatorial signals in SpinalHDL yet...
 
     val (input1, input2, actual_output) = common_check(instr, data)
-    val flag_output = input1 & input2
+    val flag_output                     = input1 & input2
 
     val z = flag_output === 0
     val n = flag_output(7)

@@ -31,10 +31,10 @@ class Formal_ADD extends AluVerification {
 
     val (input1, input2, actual_output) = common_check(instr, data)
 
-    val carry_in = UInt(1 bit)
-    val sum9     = UInt(9 bits)
-    val sum8     = UInt(8 bits)
-    val sum5     = UInt(5 bits)
+    val carry_in   = UInt(1 bit)
+    val sum9       = UInt(9 bits)
+    val sum8       = UInt(8 bits)
+    val sum5       = UInt(5 bits)
     val with_carry = (data.instr(1) === False)
 
     val h = sum5(4)

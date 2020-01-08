@@ -28,9 +28,9 @@ class Formal_CMP extends AluVerification {
     // Asserts are not possible with combinatorial signals in SpinalHDL yet...
 
     val (input1, input2, actual_output) = common_check(instr, data)
-    val sinput1 = input1.asSInt
-    val sinput2 = input2.asSInt
-    val output  = input1
+    val sinput1                         = input1.asSInt
+    val sinput2                         = input2.asSInt
+    val output                          = input1
 
     val z = input1 === input2
     val n = (input1.asUInt - input2.asUInt)(7)
