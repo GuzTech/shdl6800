@@ -28,8 +28,8 @@ multiclock off
 smtbmc boolector
 
 [script]
-read -sv Core.sv
-prep -top Core
+read -sv rel_file.sv
+prep -top top_entity
 
 [files]
-Core.sv
+abs_file.sv
