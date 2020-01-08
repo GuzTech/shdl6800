@@ -27,7 +27,7 @@ class Formal_JMP extends Verification {
 
   override def check(instr: Bits, data: FormalData): Unit = {
     // Asserts are not possible with combinatorial signals in SpinalHDL yet...
-    val mode = instr(4 to 5)
+    val mode = instr(5 downto 4)
 
     assert(data.post_ccs === data.pre_ccs)
     assert(data.post_a === data.pre_a)
@@ -46,7 +46,7 @@ class Formal_JMP extends Verification {
     when(mode === ModeBits.INDEXED.asBits) {
       assert(data.addresses_read === 1)
       assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
-      assert(data.post_pc === data.plus16(data.pre_x.asSInt, data.read_data(0).asSInt).asBits)
+      assert(data.post_pc === data.plus16(data.pre_x.asSInt, data.read_data(0).resize(16).asSInt).asBits)
     }
   }
 }
