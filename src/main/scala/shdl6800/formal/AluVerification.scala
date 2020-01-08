@@ -27,7 +27,7 @@ class AluVerification extends Verification {
    * values to verify flags and expected output.
    */
   def common_check(instr: Bits, data: FormalData): (Bits, Bits, Bits) = {
-    val mode          = instr(4 to 5)
+    val mode          = instr(5 downto 4)
     val b             = instr(6)
     val input1        = Mux(b, data.pre_b, data.pre_a)
     val input2        = Bits(8 bits)
@@ -71,7 +71,7 @@ class AluVerification extends Verification {
       assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 2).asBits)
       assert(data.addresses_read === 2)
       assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
-      assert(data.read_addr(1) === data.plus16(data.pre_x.asSInt, data.read_data(0).asSInt).asBits)
+      assert(data.read_addr(1) === data.plus16(data.pre_x.asSInt, data.read_data(0).resize(16).asSInt).asBits)
 
       input2 := data.read_data(1)
     }
