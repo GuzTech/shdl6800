@@ -30,9 +30,9 @@ class Formal_SUB extends AluVerification {
 
     val (input1, input2, actual_output) = common_check(instr, data)
 
-    val carry_in = UInt(1 bit)
-    val sum9     = UInt(9 bits)
-    val sum8     = UInt(8 bits)
+    val carry_in   = UInt(1 bit)
+    val sum9       = UInt(9 bits)
+    val sum8       = UInt(8 bits)
     val with_carry = (data.instr(1) === True)
 
     val n = sum9(7)
@@ -53,7 +53,7 @@ class Formal_SUB extends AluVerification {
     val inp1 = input1.resize(9).asUInt
     val inp2 = input2.resize(9).asUInt
 
-    sum9 := (inp1 + ~inp2 + ~carry_in)
+    sum9 := (inp1 + (~input2).resize(9).asUInt + ~carry_in)
     sum8 := (inp1(6 downto 0).resize(8) + (~inp2(6 downto 0)).resize(8) + ~carry_in)
     assert(actual_output === sum9(7 downto 0).asBits)
 
