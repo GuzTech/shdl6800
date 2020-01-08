@@ -30,6 +30,7 @@
 
 package shdl6800
 
+import shdl6800.Consts.ModeBits
 import shdl6800.formal.{FormalData, Verification}
 import spinal.core._
 
@@ -133,14 +134,15 @@ case class Core(verification: Option[Verification] = None) extends Component {
   // Internal state
   val reset_state    = Reg(Bits(2 bits)) init(0) // Where we are during reset
   val cycle          = Reg(UInt(4 bits)) init(0) // Where we are during instr processing
+  val mode           = Bits(2 bits)                      // Mode bits, decoded by ModeBits
 
   val end_instr_flag = Bits(1 bit)   // Performs end-of-instruction actions
   val end_instr_addr = Bits(16 bits) // where the next instruction is
 
-  val alu = new ALU8
-
   // Formal verification
   val formalData = FormalData(verification)
+
+  val alu = new ALU8
 
   /* Default values. Some are necessary to avoid getting compiler errors
    * about signals not having drivers, or latches being inferred. */
@@ -148,9 +150,14 @@ case class Core(verification: Option[Verification] = None) extends Component {
   src8_1_select  := Reg8.NONE
   src8_2_select  := Reg8.NONE
   alu8_func      := ALU8Func.NONE
+  VMA            := 1
+  cycle          := cycle + 1
   end_instr_addr := 0
   x              := 0
   sp             := 0
+
+  // Some common instruction decoding
+  mode := instr(5 downto 4)
 
   src_bus_setup(reg8_map, src8_1, src8_1_select)
   src_bus_setup(reg8_map, src8_2, src8_2_select)
@@ -227,12 +234,11 @@ case class Core(verification: Option[Verification] = None) extends Component {
    * We always increment PC and Addr and go to instruction cycle 1. */
   def fetch(): Unit = {
     instr := io.Din
-    cycle := 1
     RW    := 1
 
     val new_pc = (pc.asSInt + 1).asBits
-    pc     := new_pc
-    Addr   := new_pc
+    pc   := new_pc
+    Addr := new_pc
   }
 
   /* If formal verification is enabled, take pre- and post-snapshots, and do asserts.
@@ -267,20 +273,21 @@ case class Core(verification: Option[Verification] = None) extends Component {
   // Execute the instruction in the instr register.
   def execute(): Unit = {
     switch(instr) {
-      is(B"0000_0001") { NOP() }                                // NOP
-      is(B"0111_1110") { JMPext() }                             // JMP ext
-      is(M"1-11_0110") { ALUext(ALU8Func.LD) }                  // LDA ext
-      is(M"1-11_0000") { ALUext(ALU8Func.SUB) }                 // SUB ext
-      is(M"1-11_0001") { ALUext(ALU8Func.SUB, store = false) }  // CMP ext
-      is(M"1-11_0010") { ALUext(ALU8Func.SBC) }                 // SBC ext
-      is(M"1-11_0100") { ALUext(ALU8Func.AND) }                 // AND ext
-      is(M"1-11_0101") { ALUext(ALU8Func.AND, store = false) }  // BIT ext
-      is(M"1-11_0111") { STAext() }                             // STA ext
-      is(M"1-11_1000") { ALUext(ALU8Func.EOR) }                 // EOR ext
-      is(M"1-11_1001") { ALUext(ALU8Func.ADC) }                 // ADC ext
-      is(M"1-11_1010") { ALUext(ALU8Func.ORA) }                 // ORA ext
-      is(M"1-11_1011") { ALUext(ALU8Func.ADD) }                 // ADD ext
-      default  { end_instr(pc) }                                // Illegal
+      is(B"0000_0001") { NOP() }                             // NOP
+      is(M"011-_1110") { JMP() }                             // JMP
+      is(M"1---_0110") { ALU(ALU8Func.LD) }                  // LDA
+      is(M"1---_0000") { ALU(ALU8Func.SUB) }                 // SUB
+      is(M"1---_0001") { ALU(ALU8Func.SUB, store = false) }  // CMP
+      is(M"1---_0010") { ALU(ALU8Func.SBC) }                 // SBC
+      is(M"1---_0100") { ALU(ALU8Func.AND) }                 // AND
+      is(M"1---_0101") { ALU(ALU8Func.AND, store = false) }  // BIT
+      is(M"1--1_0111",
+         M"1-10_0111") { STA() }                             // STA
+      is(M"1---_1000") { ALU(ALU8Func.EOR) }                 // EOR
+      is(M"1---_1001") { ALU(ALU8Func.ADC) }                 // ADC
+      is(M"1---_1010") { ALU(ALU8Func.ORA) }                 // ORA
+      is(M"1---_1011") { ALU(ALU8Func.ADD) }                 // ADD
+      default  { end_instr(pc) }                             // Illegal
     }
   }
 
@@ -288,7 +295,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
    *
    * The byte read is combinatorially placed in comb_dest.
    */
-  def read_byte(cycle: UInt, addr: Bits, comb_dest: Bits): Unit = {
+  def read_byte(cycle: Int, addr: Bits, comb_dest: Bits): Unit = {
     when(this.cycle === cycle) {
       Addr := addr
       RW   := 1
@@ -303,33 +310,96 @@ case class Core(verification: Option[Verification] = None) extends Component {
     }
   }
 
-  def ALUext(func: SpinalEnumElement[ALU8Func.type], store: Boolean = true): Unit = {
-    val operand = mode_ext()
-    read_byte(cycle = 2, addr = operand, comb_dest = src8_2)
-
+  def ALU(func: SpinalEnumElement[ALU8Func.type], store: Boolean = true): Unit = {
     val b_bit = instr(6)
 
-    when(cycle === 3) {
-      src8_1    := Mux(b_bit, b, a)
-      alu8_func := func
+    when(mode === ModeBits.DIRECT.asBits) {
+      val operand = mode_direct()
+      read_byte(cycle = 1, addr = operand, comb_dest = src8_2)
 
-      if(store) {
-        when(b_bit) {
-          b := alu8
-        } otherwise {
-          a := alu8
+      when(cycle === 2) {
+        src8_1    := Mux(b_bit, b, a)
+        alu8_func := func
+
+        if (store) {
+          when(b_bit) {
+            b := alu8
+          } otherwise {
+            a := alu8
+          }
         }
+        end_instr(pc)
       }
+    }.elsewhen(mode === ModeBits.EXTENDED.asBits) {
+      val operand = mode_ext()
+      read_byte(cycle = 2, addr = operand, comb_dest = src8_2)
 
-      end_instr(pc)
+      when(cycle === 3) {
+        src8_1    := Mux(b_bit, b, a)
+        alu8_func := func
+
+        if(store) {
+          when(b_bit) {
+            b := alu8
+          } otherwise {
+            a := alu8
+          }
+        }
+
+        end_instr(pc)
+      }
+    }.elsewhen(mode === ModeBits.IMMEDIATE.asBits) {
+      val operand = mode_immediate8()
+
+      when(cycle === 2) {
+        src8_1    := Mux(b_bit, b, a)
+        src8_2    := operand
+        alu8_func := func
+
+        if(store) {
+          when(b_bit) {
+            b := alu8
+          } otherwise {
+            a := alu8
+          }
+        }
+
+        end_instr(pc)
+      }
+    }.elsewhen(mode === ModeBits.INDEXED.asBits) {
+      val operand = mode_indexed()
+      read_byte(cycle = 3, addr = operand, comb_dest = src8_2)
+
+      when(cycle === 4) {
+        src8_1    := Mux(b_bit, b, a)
+        alu8_func := func
+
+        if(store) {
+          when(b_bit) {
+            b := alu8
+          } otherwise {
+            a := alu8
+          }
+        }
+
+        end_instr(pc)
+      }
     }
   }
 
-  def JMPext(): Unit = {
-    val operand = mode_ext()
+  def JMP(): Unit = {
+    when(mode === ModeBits.EXTENDED.asBits) {
+      val operand = mode_ext()
 
-    when(cycle === 2) {
-      end_instr(operand)
+      when(cycle === 2) {
+        end_instr(operand)
+      }
+    }.elsewhen(mode === ModeBits.INDEXED.asBits) {
+      val operand = mode_indexed()
+
+      when(cycle === 3) {
+        end_instr(operand)
+      }
     }
   }
 
@@ -337,33 +407,158 @@ case class Core(verification: Option[Verification] = None) extends Component {
     end_instr(pc)
   }
 
-  def STAext(): Unit = {
-    val operand = mode_ext()
-
+  def STA(): Unit = {
     val b_bit = instr(6)
 
-    when(cycle === 2) {
-      VMA  := 0
-      Addr := operand
-      RW   := 1
-    }
+    when(mode === ModeBits.DIRECT.asBits) {
+      val operand = mode_direct()
 
-    when(cycle === 3) {
-      Addr  := operand
-      Dout  := Mux(b_bit, b, a)
-      RW    := 0
-      cycle := 4
-    }
-
-    when(cycle === 4) {
-      if(verification.isDefined) {
-        formalData.write(Addr, Dout)
+      when(cycle === 1) {
+        VMA  := 0
+        Addr := operand
+        RW   := 1
       }
 
-      src8_2    := Mux(b_bit, b, a)
-      alu8_func := ALU8Func.LD
-      end_instr(pc)
+      when(cycle === 2) {
+        Addr := operand
+        Dout := Mux(b_bit, b, a)
+        RW   := 0
+      }
+
+      when(cycle === 3) {
+        if (verification.isDefined) {
+          formalData.write(Addr, Dout)
+        }
+
+        src8_2    := Mux(b_bit, b, a)
+        alu8_func := ALU8Func.LD
+        end_instr(pc)
+      }
+    }.elsewhen(mode === ModeBits.EXTENDED.asBits) {
+      val operand = mode_ext()
+
+      when(cycle === 2) {
+        VMA  := 0
+        Addr := operand
+        RW   := 1
+      }
+
+      when(cycle === 3) {
+        Addr := operand
+        Dout := Mux(b_bit, b, a)
+        RW   := 0
+      }
+
+      when(cycle === 4) {
+        if (verification.isDefined) {
+          formalData.write(Addr, Dout)
+        }
+
+        src8_2    := Mux(b_bit, b, a)
+        alu8_func := ALU8Func.LD
+        end_instr(pc)
+      }
+    }.elsewhen(mode === ModeBits.INDEXED.asBits) {
+      val operand = mode_indexed()
+
+      when(cycle === 3) {
+        VMA  := 0
+        Addr := operand
+        RW   := 1
+      }
+
+      when(cycle === 4) {
+        Addr := operand
+        Dout := Mux(b_bit, b, a)
+        RW   := 0
+      }
+
+      when(cycle === 5) {
+        if (verification.isDefined) {
+          formalData.write(Addr, Dout)
+        }
+
+        src8_2    := Mux(b_bit, b, a)
+        alu8_func := ALU8Func.LD
+        end_instr(pc)
+      }
     }
+  }
+
+  /* Generates logic to get the 8-bit operand for immediate mode instructions.
+   *
+   * Returns the Bits containing an 8-bit operand.
+   * After cycle 1, tmp8 contains the operand.
+   */
+  def mode_immediate8(): Bits = {
+    val operand = Mux(cycle === 1, io.Din, tmp8)
+
+    when(cycle === 1) {
+      tmp8 := io.Din
+      val new_pc = (pc.asSInt + 1).asBits
+      pc   := new_pc
+      Addr := new_pc
+      RW   := 1
+
+      if (verification.isDefined) {
+        formalData.read(Addr, io.Din)
+      }
+    }
+
+    operand
+  }
+
+  /* Generates logic to get the 8-bit zero-page address for direct mode instructions.
+   *
+   * Returns the Bits containing a 16-bit address where the upper byte is zero.
+   * After cycle 1, tmp16 contains the address.
+   */
+  def mode_direct(): Bits = {
+    val operand = Mux(cycle === 1, io.Din.resize(16), tmp16)
+
+    when(cycle === 1) {
+      tmp16(15 downto 8) := 0
+      tmp16( 7 downto 0) := io.Din
+      val new_pc = (pc.asSInt + 1).asBits
+      pc   := new_pc
+      Addr := new_pc
+      RW   := 1
+
+      if (verification.isDefined) {
+        formalData.read(Addr, io.Din)
+      }
+    }
+
+    operand
+  }
+
+  /* Generate logic to get the 16-bits address for indexed mode instructions.
+   *
+   * Returns the Bits containing a 16-bit address.
+   * After cycle 2, tmp16 contains the address. The address is not valid until after
+   * cycle 2.
+   */
+  def mode_indexed(): Bits = {
+    val operand = tmp16
+
+    when(cycle === 1) {
+      tmp16(15 downto 8) := 0
+      tmp16( 7 downto 0) := io.Din
+      val new_pc         = (pc.asSInt + 1).asBits
+      pc                 := new_pc
+      Addr               := new_pc
+      RW                 := 1
+
+      if (verification.isDefined) {
+        formalData.read(Addr, io.Din)
+      }
+    }
+
+    when(cycle === 2) {
+      tmp16 := (tmp16.asSInt + x.asSInt).asBits
+    }
+
+    operand
   }
 
   /* Generates logic to get the 16-bit operand for extended mode instructions.
@@ -381,7 +576,6 @@ case class Core(verification: Option[Verification] = None) extends Component {
       pc                 := new_addr
       Addr               := new_addr
       RW                 := 1
-      cycle              := 2
 
       if(verification.isDefined) {
         formalData.read(Addr, io.Din)
@@ -391,7 +585,6 @@ case class Core(verification: Option[Verification] = None) extends Component {
     when(cycle === 2) {
       tmp16(7 downto 0) := io.Din
       pc                := (pc.asSInt + 1).asBits
-      cycle             := 3
 
       if(verification.isDefined) {
         formalData.read(Addr, io.Din)
@@ -470,20 +663,25 @@ object Core {
         import spinal.core.Formal._
         import shdl6800.formal._
 
-        val config = SpinalConfig(defaultConfigForClockDomains = ClockDomainConfig(resetKind = SYNC, resetActiveLevel = HIGH))
+        val config = SpinalConfig(
+          defaultConfigForClockDomains = ClockDomainConfig(
+            resetKind        = SYNC,
+            resetActiveLevel = HIGH),
+          targetDirectory = "src/main/scala/shdl6800/formal/sby/"
+        )
         config.includeFormal.generateSystemVerilog {
           val verification: Option[Verification] = args(0) match {
-            case "jmp" => Some(new Formal_JMP)
-            case "lda" => Some(new Formal_LDA)
-            case "add" => Some(new Formal_ADD)
-            case "sub" => Some(new Formal_SUB)
-            case "and" => Some(new Formal_AND)
-            case "bit" => Some(new Formal_BIT)
-            case "cmp" => Some(new Formal_CMP)
-            case "eor" => Some(new Formal_EOR)
-            case "ora" => Some(new Formal_ORA)
-            case "sta" => Some(new Formal_STA)
-            case _     => None
+            case "jmp" | "JMP" => Some(new Formal_JMP)
+            case "lda" | "LDA" => Some(new Formal_LDA)
+            case "add" | "ADD" => Some(new Formal_ADD)
+            case "sub" | "SUB" => Some(new Formal_SUB)
+            case "and" | "AND" => Some(new Formal_AND)
+            case "bit" | "BIT" => Some(new Formal_BIT)
+            case "cmp" | "CMP" => Some(new Formal_CMP)
+            case "eor" | "EOR" => Some(new Formal_EOR)
+            case "ora" | "ORA" => Some(new Formal_ORA)
+            case "sta" | "STA" => Some(new Formal_STA)
+            case _             => None
           }
           val core: Core = new Core(verification) {
             if (verification.isDefined) {
@@ -517,7 +715,7 @@ object Core {
             }
           }
 
-          core.setDefinitionName("Core")
+          core.setDefinitionName(args(0).toUpperCase())
           core
         }.printPruned()
       }
