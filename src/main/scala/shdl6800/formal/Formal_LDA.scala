@@ -34,7 +34,7 @@ class Formal_LDA extends AluVerification {
     val n = output(7)
     val v = False
 
-    assert(output === data.read_data(2))
+    assert(actual_output === output)
     assertFlags(
       data.post_ccs,
       data.pre_ccs,
