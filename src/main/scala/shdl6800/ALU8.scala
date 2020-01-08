@@ -181,12 +181,7 @@ object ALU8 {
 
           switch(io.func) {
             is(ALU8Func.ADD, ALU8Func.ADC) {
-              // sumN = input1(N-1 downto 0) + input2(N-1 downto 0) (so sumN(N-1) is the carry bit)
-              when(io.func === ALU8Func.ADD) {
-                carry_in := 0
-              } otherwise {
-                carry_in := ccs(Flags.C).asUInt
-              }
+              carry_in := Mux(io.func === ALU8Func.ADD, U"0", ccs(Flags.C).asUInt)
 
               val h = sum5(4)
               val n = sum9(7)
