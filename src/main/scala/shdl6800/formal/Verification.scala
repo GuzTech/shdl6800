@@ -97,13 +97,13 @@ case class FormalData(verification: Option[Verification]) {
   val post_sp           = Bits(16 bits)
   val post_pc           = Bits(16 bits)
 
-  val addresses_written = Reg(UInt(3 bits)) init(0)
-  val write_addr        = Vec(Reg(Bits), 8)
-  val write_data        = Vec(Reg(Bits), 8)
+  val addresses_written = Reg(UInt(3 bits))      init(0)
+  val write_addr        = Vec(Reg(Bits(16 bits)) init(0), 8)
+  val write_data        = Vec(Reg(Bits(8 bits))  init(0), 8)
 
-  val addresses_read    = Reg(UInt(3 bits)) init(0)
-  val read_addr         = Vec(Reg(Bits), 8)
-  val read_data         = Vec(Reg(Bits), 8)
+  val addresses_read    = Reg(UInt(3 bits))      init(0)
+  val read_addr         = Vec(Reg(Bits(16 bits)) init(0), 8)
+  val read_data         = Vec(Reg(Bits(8 bits))  init(0), 8)
 
   // Assign default values to prevent compiler detecting latches.
   post_ccs := 0
