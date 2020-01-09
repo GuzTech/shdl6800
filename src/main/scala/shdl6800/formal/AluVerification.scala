@@ -79,3 +79,86 @@ class AluVerification extends Verification {
     (input1, input2, actual_output)
   }
 }
+
+class Alu2Verification extends Verification {
+  /* Does common checks for ALU instructions from 0x40 to 0x7F.
+   *
+   * Returns a tuple of Bits: (input1, input2, actual_output). The caller should use those
+   * values to verify flags and expected output.
+   */
+  def common_check(instr: Bits, data: FormalData, store: Boolean = true): (Bits, Bits) = {
+    val mode          = instr(5 downto 4)
+    val input         = Bits(8 bits)
+    val actual_output = Bits(8 bits)
+
+    // Give this a default value, or else the compiler detects a latch
+
+    assert(data.post_x === data.pre_x)
+    assert(data.post_sp === data.pre_sp)
+
+    when(mode === ModeBits.A.asBits) {
+      assert(data.post_b === data.pre_b)
+      assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 1).asBits)
+      assert(data.addresses_read === 0)
+      assert(data.addresses_written === 0)
+
+      input := data.pre_a
+
+      if(store) {
+        actual_output := data.post_a
+      } else {
+        assert(data.post_a === data.pre_a)
+      }
+    }.elsewhen(mode === ModeBits.B.asBits) {
+      assert(data.post_a === data.pre_a)
+      assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 1).asBits)
+      assert(data.addresses_read === 0)
+      assert(data.addresses_written === 0)
+
+      input := data.pre_b
+
+      if(store) {
+        actual_output := data.post_b
+      } else {
+        assert(data.post_b === data.pre_b)
+      }
+    }.elsewhen(mode === ModeBits.EXTENDED.asBits) {
+      assert(data.post_a === data.pre_a)
+      assert(data.post_b === data.pre_b)
+      assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 3).asBits)
+      assert(data.addresses_read === 3)
+      assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
+      assert(data.read_addr(1) === data.plus16(data.pre_pc.asSInt, 2).asBits)
+      assert(data.read_addr(2) === Cat(data.read_data(0), data.read_data(1)))
+
+      input := data.read_data(2)
+
+      if(store) {
+        assert(data.addresses_written === 1)
+        assert(data.write_addr(0) === data.read_addr(2))
+        actual_output := data.write_data(0)
+      } else {
+        assert(data.addresses_written === 0)
+      }
+    }.elsewhen(mode === ModeBits.INDEXED.asBits) {
+      assert(data.post_a === data.pre_a)
+      assert(data.post_b === data.pre_b)
+      assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 2).asBits)
+      assert(data.addresses_read === 2)
+      assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
+      assert(data.read_addr(1) === data.plus16(data.pre_x.asSInt, data.read_data(0).resize(16).asSInt).asBits)
+
+      input := data.read_data(1)
+
+      if(store) {
+        assert(data.addresses_written === 1)
+        assert(data.write_addr(0) === data.read_addr(1))
+        actual_output := data.write_data(0)
+      } else {
+        assert(data.addresses_written === 0)
+      }
+    }
+
+    (input, actual_output)
+  }
+}

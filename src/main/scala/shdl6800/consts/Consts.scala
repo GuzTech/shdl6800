@@ -20,10 +20,12 @@ package shdl6800.Consts
 import spinal.core.{SpinalEnum, SpinalEnumEncoding}
 
 object ModeBits extends SpinalEnum {
-  val IMMEDIATE, DIRECT, INDEXED, EXTENDED = newElement()
+  val IMMEDIATE, A, DIRECT, B, INDEXED, EXTENDED = newElement()
   defaultEncoding = SpinalEnumEncoding("staticEncoding")(
     IMMEDIATE -> 0,
+    A         -> 0, // An alias for instructions in 0x40-0x7F
     DIRECT    -> 1,
+    B         -> 1, // An alias for instructions in 0x40-0x7F
     INDEXED   -> 2,
     EXTENDED  -> 3
   )
