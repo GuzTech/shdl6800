@@ -274,28 +274,39 @@ case class Core(verification: Option[Verification] = None) extends Component {
   // Execute the instruction in the instr register.
   def execute(): Unit = {
     switch(instr) {
-      is(B"0000_0001") { NOP() }                             // NOP
-      is(B"0000_0110") { TAP() }                             // TAP
-      is(B"0000_0111") { TPA() }                             // TPA
-      is(M"0000_100-") { IN_DE_X() }                         // INX/DEX
-      is(M"0000_101-") { CL_SE_V() }                         // CLV, SEV
-      is(M"0000_110-") { CL_SE_C() }                         // CLC, SEC
-      is(M"0000_111-") { CL_SE_I() }                         // CLI, SEI
-      is(M"0010_----") { BR() }                              // Branch instructions
-      is(M"011-_1110") { JMP() }                             // JMP
-      is(M"1---_0110") { ALU(ALU8Func.LD) }                  // LDA
-      is(M"1---_0000") { ALU(ALU8Func.SUB) }                 // SUB
-      is(M"1---_0001") { ALU(ALU8Func.SUB, store = false) }  // CMP
-      is(M"1---_0010") { ALU(ALU8Func.SBC) }                 // SBC
-      is(M"1---_0100") { ALU(ALU8Func.AND) }                 // AND
-      is(M"1---_0101") { ALU(ALU8Func.AND, store = false) }  // BIT
+      is(B"0000_0001") { NOP() }                                           // NOP
+      is(B"0000_0110") { TAP() }                                           // TAP
+      is(B"0000_0111") { TPA() }                                           // TPA
+      is(M"0000_100-") { IN_DE_X() }                                       // INX/DEX
+      is(M"0000_101-") { CL_SE_V() }                                       // CLV, SEV
+      is(M"0000_110-") { CL_SE_C() }                                       // CLC, SEC
+      is(M"0000_111-") { CL_SE_I() }                                       // CLI, SEI
+      is(M"0010_----") { BR() }                                            // Branch instructions
+      is(M"01--_0000") { ALU2(ALU8Func.SUB, False, True) }                 // NEG
+      is(M"01--_0011") { ALU2(ALU8Func.COM, False, True) }                 // COM
+      is(M"01--_0100") { ALU2(ALU8Func.LSR, False, True) }                 // LSR
+      is(M"01--_0110") { ALU2(ALU8Func.ROR, False, True) }                 // ROR
+      is(M"01--_0111") { ALU2(ALU8Func.ASR, False, True) }                 // ASR
+      is(M"01--_1000") { ALU2(ALU8Func.ASL, False, True) }                 // ASL
+      is(M"01--_1001") { ALU2(ALU8Func.ROL, False, True) }                 // ROL
+      is(M"01--_1010") { ALU2(ALU8Func.DEC, False, True) }                 // DEC
+      is(M"01--_1100") { ALU2(ALU8Func.INC, False, True) }                 // INC
+      is(M"01--_1101") { ALU2(ALU8Func.SUB, False, True, store = false) }  // TST
+      is(M"011-_1110") { JMP() }                                           // JMP
+      is(M"01--_1111") { ALU2(ALU8Func.SUB, True, True) }                  // CLR
+      is(M"1---_0110") { ALU(ALU8Func.LD) }                                // LDA
+      is(M"1---_0000") { ALU(ALU8Func.SUB) }                               // SUB
+      is(M"1---_0001") { ALU(ALU8Func.SUB, store = false) }                // CMP
+      is(M"1---_0010") { ALU(ALU8Func.SBC) }                               // SBC
+      is(M"1---_0100") { ALU(ALU8Func.AND) }                               // AND
+      is(M"1---_0101") { ALU(ALU8Func.AND, store = false) }                // BIT
       is(M"1--1_0111",
-         M"1-10_0111") { STA() }                             // STA
-      is(M"1---_1000") { ALU(ALU8Func.EOR) }                 // EOR
-      is(M"1---_1001") { ALU(ALU8Func.ADC) }                 // ADC
-      is(M"1---_1010") { ALU(ALU8Func.ORA) }                 // ORA
-      is(M"1---_1011") { ALU(ALU8Func.ADD) }                 // ADD
-      default  { end_instr(pc) }                             // Illegal
+         M"1-10_0111") { STA() }                                           // STA
+      is(M"1---_1000") { ALU(ALU8Func.EOR) }                               // EOR
+      is(M"1---_1001") { ALU(ALU8Func.ADC) }                               // ADC
+      is(M"1---_1010") { ALU(ALU8Func.ORA) }                               // ORA
+      is(M"1---_1011") { ALU(ALU8Func.ADD) }                               // ADD
+      default  { end_instr(pc) }                                           // Illegal
     }
   }
 
@@ -303,14 +314,16 @@ case class Core(verification: Option[Verification] = None) extends Component {
    *
    * The byte read is combinatorially placed in comb_dest.
    */
-  def read_byte(cycle: Int, addr: Bits, comb_dest: Bits): Unit = {
+  def read_byte(cycle: Int, addr: Bits, comb_dest: Option[Bits]): Unit = {
     when(this.cycle === cycle) {
       Addr := addr
       RW   := 1
     }
 
     when(this.cycle === (cycle + 1)) {
-      comb_dest := io.Din
+      if(comb_dest.isDefined) {
+        comb_dest.get := io.Din
+      }
 
       if(verification.isDefined) {
         formalData.read(Addr, io.Din)
@@ -323,7 +336,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
 
     when(mode === ModeBits.DIRECT.asBits) {
       val operand = mode_direct()
-      read_byte(cycle = 1, addr = operand, comb_dest = src8_2)
+      read_byte(cycle = 1, addr = operand, comb_dest = Some(src8_2))
 
       when(cycle === 2) {
         src8_1    := Mux(b_bit, b, a)
@@ -340,7 +353,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
       }
     }.elsewhen(mode === ModeBits.EXTENDED.asBits) {
       val operand = mode_ext()
-      read_byte(cycle = 2, addr = operand, comb_dest = src8_2)
+      read_byte(cycle = 2, addr = operand, comb_dest = Some(src8_2))
 
       when(cycle === 3) {
         src8_1    := Mux(b_bit, b, a)
@@ -376,7 +389,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
       }
     }.elsewhen(mode === ModeBits.INDEXED.asBits) {
       val operand = mode_indexed()
-      read_byte(cycle = 3, addr = operand, comb_dest = src8_2)
+      read_byte(cycle = 3, addr = operand, comb_dest = Some(src8_2))
 
       when(cycle === 4) {
         src8_1    := Mux(b_bit, b, a)
@@ -390,6 +403,96 @@ case class Core(verification: Option[Verification] = None) extends Component {
           }
         }
 
+        end_instr(pc)
+      }
+    }
+  }
+
+  def ALU2(func: SpinalEnumElement[ALU8Func.type], operand1: Bool, operand2: Bool, store: Boolean = true): Unit = {
+    when(mode === ModeBits.A.asBits) {
+      src8_1    := Mux(operand1, a, B(0))
+      src8_2    := Mux(operand2, a, B(0))
+      alu8_func := func
+
+      if(store) {
+        a := alu8
+      }
+
+      end_instr(pc)
+    }.elsewhen(mode === ModeBits.B.asBits) {
+      src8_1    := Mux(operand1, b, B(0))
+      src8_2    := Mux(operand2, b, B(0))
+      alu8_func := func
+
+      if(store) {
+        b := alu8
+      }
+
+      end_instr(pc)
+    }.elsewhen(mode === ModeBits.EXTENDED.asBits) {
+      val operand = mode_ext()
+      read_byte(cycle = 2, addr = operand, comb_dest = None)
+
+      when(cycle === 3) {
+        src8_1    := Mux(operand1, io.Din, B(0))
+        src8_2    := Mux(operand2, io.Din, B(0))
+        alu8_func := func
+        // Output during cycle 4:
+        tmp8      := alu8
+        VMA       := 0
+        Addr      := operand
+        RW        := 1
+      }
+
+      when(cycle === 4) {
+        Addr := operand
+        Dout := tmp8
+        RW   := 0
+
+        if(!store) {
+          VMA := 0
+        }
+      }
+
+      when(cycle === 5) {
+        if(store) {
+          if(verification.isDefined) {
+            formalData.write(Addr, Dout)
+          }
+        }
+        end_instr(pc)
+      }
+    }.elsewhen(mode === ModeBits.INDEXED.asBits) {
+      val operand = mode_indexed()
+      read_byte(cycle = 3, addr = operand, comb_dest = None)
+
+      when(cycle === 4) {
+        src8_1    := Mux(operand1, io.Din, B(0))
+        src8_2    := Mux(operand2, io.Din, B(0))
+        alu8_func := func
+        // Output during cycle 4:
+        tmp8      := alu8
+        VMA       := 0
+        Addr      := operand
+        RW        := 1
+      }
+
+      when(cycle === 5) {
+        Addr := operand
+        Dout := tmp8
+        RW   := 0
+
+        if(!store) {
+          VMA := 0
+        }
+      }
+
+      when(cycle === 6) {
+        if(store) {
+          if(verification.isDefined) {
+            formalData.write(Addr, Dout)
+          }
+        }
         end_instr(pc)
       }
     }
@@ -817,6 +920,7 @@ object Core {
             case "tap"       | "TAP"       => Some(new Formal_TAP)
             case "tpa"       | "TPA"       => Some(new Formal_TPA)
             case "inc_dec_x" | "INC_DEC_X" => Some(new Formal_INC_DEC_X)
+            case "clr"       | "CLR"       => Some(new Formal_CLR)
             case _                         => None
           }
           val core: Core = new Core(verification) {
