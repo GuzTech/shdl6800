@@ -14,22 +14,23 @@ I also have some experience with SpinalHDL, and while watching his videos, it lo
 - [Part 3](https://www.youtube.com/watch?v=aLQqOxnVMOQ) is [completed](https://github.com/GuzTech/shdl6800/tree/part_3).
 - [Part 4](https://www.youtube.com/watch?v=xqMtyCu4lME) is [completed](https://github.com/GuzTech/shdl6800/tree/part_4).
 - [Part 5](https://www.youtube.com/watch?v=9MMb9dSnNvo) is [completed](https://github.com/GuzTech/shdl6800/tree/part_5).
+- [Part 6](https://www.youtube.com/watch?v=C6sUaElP9hA) is [completed](https://github.com/GuzTech/shdl6800/tree/part_6).
 
 The following instructions have been implemented:
 
 - NOP
-- ADDA/ADDB ext (with formal *add*)
-- ADCA/ADCB ext (with formal *add*)
-- ANDA/ANDB ext (with formal *and*)
-- BITA/BITB ext (with formal *bit*)
-- CMPA/CMPB ext (with formal *cmp*)
-- EORA/EORB ext (with formal *eor*)
-- JMP ext (with formal *jmp*)
-- LDAA/LDAB ext (with formal *lda*)
-- ORAA/ORAB ext (with formal *ora*)
-- STAA/STAB ext (with formal *sta*)
-- SUBA/SUBC ext (with formal *sub*)
-- SBCA/SBCB ext (with formal *sub*)
+- ADD (with formal *add*)
+- ADC (with formal *add*)
+- AND (with formal *and*)
+- BIT (with formal *bit*)
+- CMP (with formal *cmp*)
+- EOR (with formal *eor*)
+- JMP (with formal *jmp*)
+- LDA (with formal *lda*)
+- ORA (with formal *ora*)
+- STA (with formal *sta*)
+- SUB (with formal *sub*)
+- SBC (with formal *sub*)
 
 ## Generating Verilog
 
@@ -51,18 +52,22 @@ This will generate Verilator code of the core and simulate the design as describ
 
 ## Formal Verification
 
-Formal verification requires the free and open-source [SymbiYosys](https://symbiyosys.readthedocs.io/en/latest/quickstart.html) tools. Once installed, first run the `main` function of the `Core` object with the instruction you want to formally verify. For example:
+Formal verification requires the free and open-source [SymbiYosys](https://symbiyosys.readthedocs.io/en/latest/quickstart.html) and [Boolector](https://boolector.github.io/) tools. Once installed, you can either formally verify all instructions, one by one:
 
 ```
-sbt "runMain shdl6800.Core jmp"
+make -s formal
 ```
 
-This will generate a SystemVerilog file with the formal proofs for the `jmp` instruction.
-
-Then simply run SymbiYosys:
+Or verify them in parallel by specifying how many you want with the `-j<number>` flag. For example, to use all the cores of your CPU:
 
 ```
-sby -f Core.sby
+make -s formal -j$(nproc)
+```
+
+Or you can verify a single instruction by specifying the filename of the formal verification file of that instruction. For example, verifying the `LDA` instruction is done like this:
+
+```
+make -s Formal_LDA
 ```
 
 ## License
