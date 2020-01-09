@@ -34,6 +34,8 @@ import shdl6800.Consts.ModeBits
 import shdl6800.formal.{FormalData, Verification}
 import spinal.core._
 
+import scala.sys.process.Process
+
 /* Values for specifying an 8-bit register for things
  * like sources and destinations. Can also specify the
  * (H)igh or (L)ow 8 bits of a 16-bit signal. */
@@ -662,6 +664,9 @@ object Core {
       } else {
         import spinal.core.Formal._
         import shdl6800.formal._
+
+        // Create the output directory if it doesn't already exits
+        Process("mkdir src/main/scala/shdl6800/formal/sby/") !
 
         val config = SpinalConfig(
           defaultConfigForClockDomains = ClockDomainConfig(
