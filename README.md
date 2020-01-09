@@ -15,6 +15,7 @@ I also have some experience with SpinalHDL, and while watching his videos, it lo
 - [Part 4](https://www.youtube.com/watch?v=xqMtyCu4lME) is [completed](https://github.com/GuzTech/shdl6800/tree/part_4).
 - [Part 5](https://www.youtube.com/watch?v=9MMb9dSnNvo) is [completed](https://github.com/GuzTech/shdl6800/tree/part_5).
 - [Part 6](https://www.youtube.com/watch?v=C6sUaElP9hA) is [completed](https://github.com/GuzTech/shdl6800/tree/part_6).
+- [Part 7](https://www.youtube.com/watch?v=AerXEa84jsc) is [completed](https://github.com/GuzTech/shdl6800/tree/part_7).
 
 The following instructions have been implemented:
 
