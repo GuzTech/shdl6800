@@ -91,7 +91,8 @@ class Alu2Verification extends Verification {
     val input         = Bits(8 bits)
     val actual_output = Bits(8 bits)
 
-    // Give this a default value, or else the compiler detects a latch
+    // Assign default values, or else the compiler detects a latch
+    input         := 0
     actual_output := 0
 
     assert(data.post_x === data.pre_x)
