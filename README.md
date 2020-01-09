@@ -41,6 +41,17 @@ The following instructions have been implemented:
 - SEV (with formal *flag*)
 - TAP (with formal *tap*)
 - TPA (with formal *tpa*)
+- CLR (with formal *clr*)
+- COM (with formal *com*)
+- INC (with formal *inc_dec*)
+- DEC (with formal *inc_dec*)
+- NEG (with formal *neg*)
+- ASL (with formal *sh_rot*)
+- ASR (with formal *sh_rot*)
+- LSR (with formal *sh_rot*)
+- ROL (with formal *sh_rot*)
+- ROR (with formal *sh_rot*)
+- TST (with formal *tst*)
 
 ## Generating Verilog
 
