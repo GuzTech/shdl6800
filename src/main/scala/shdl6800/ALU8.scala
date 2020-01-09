@@ -22,7 +22,9 @@ import spinal.core._
 import shdl6800.Consts.Flags
 
 object ALU8Func extends SpinalEnum {
-  val NONE, LD, ADD, ADC, SUB, SBC, AND, EOR, ORA, CLV, SEV, CLC, SEC, TAP, TPA, CLI, SEI, CLZ, SEZ = newElement()
+  val NONE, LD, ADD, ADC, SUB, SBC, AND, EOR, ORA, CLV, SEV,
+      CLC, SEC, TAP, TPA, CLI, SEI, CLZ, SEZ, COM, INC, DEC,
+      ROL, ROR, ASL, ASR, LSR = newElement()
   defaultEncoding = SpinalEnumEncoding("staticEncoding") (
     NONE -> 0,
     LD   -> 1,
@@ -44,7 +46,15 @@ object ALU8Func extends SpinalEnum {
     CLI  -> 15,
     SEI  -> 16,
     CLZ  -> 17,
-    SEZ  -> 18
+    SEZ  -> 18,
+    COM  -> 19,
+    INC  -> 20,
+    DEC  -> 21,
+    ROL  -> 22,
+    ROR  -> 23,
+    ASL  -> 24,
+    ASR  -> 25,
+    LSR  -> 26
   )
 }
 
@@ -159,6 +169,70 @@ class ALU8 extends Component {
       _ccs(Flags.Z) := io.output === 0
       _ccs(Flags.N) := io.output(7)
       _ccs(Flags.V) := False
+    }
+    is(ALU8Func.INC) {
+      io.output     := (io.input2.asSInt + 1).asBits
+      _ccs(Flags.Z) := io.output === 0
+      _ccs(Flags.N) := io.output(7)
+      _ccs(Flags.V) := io.output === 0x80
+    }
+    is(ALU8Func.DEC) {
+      io.output     := (io.input2.asSInt - 1).asBits
+      _ccs(Flags.Z) := io.output === 0
+      _ccs(Flags.N) := io.output(7)
+      _ccs(Flags.V) := io.output === 0x7F
+    }
+    is(ALU8Func.COM) {
+      io.output     := (0xFF ^ io.input2)
+      _ccs(Flags.Z) := io.output === 0
+      _ccs(Flags.N) := io.output(7)
+      _ccs(Flags.V) := False
+      _ccs(Flags.C) := True
+    }
+    is(ALU8Func.ROL) {
+      // IIIIIIIIC ->
+      // C00000000
+
+      Cat(_ccs(Flags.C), io.output) := Cat(io.input2, ccs(Flags.C))
+      _ccs(Flags.Z) := io.output === 0
+      _ccs(Flags.N) := io.output(7)
+      _ccs(Flags.V) := _ccs(Flags.N) ^ _ccs(Flags.C)
+    }
+    is(ALU8Func.ROR) {
+      // CIIIIIIII ->
+      // 00000000C
+
+      Cat(io.output, _ccs(Flags.C)) := Cat(ccs(Flags.C), io.input2)
+      _ccs(Flags.Z) := io.output === 0
+      _ccs(Flags.N) := io.output(7)
+      _ccs(Flags.V) := _ccs(Flags.N) ^ _ccs(Flags.C)
+    }
+    is(ALU8Func.ASL) {
+      // IIIIIIII0 ->
+      // C00000000
+
+      Cat(_ccs(Flags.C), io.output) := Cat(io.input2, B"0")
+      _ccs(Flags.Z) := io.output === 0
+      _ccs(Flags.N) := io.output(7)
+      _ccs(Flags.V) := _ccs(Flags.N) ^ _ccs(Flags.C)
+    }
+    is(ALU8Func.ASR) {
+      // 7IIIIIIII ->  ("7" is the repeat of input[7])
+      // 00000000C
+
+      Cat(io.output, _ccs(Flags.C)) := Cat(io.input2(7), io.input2)
+      _ccs(Flags.Z) := io.output === 0
+      _ccs(Flags.N) := io.output(7)
+      _ccs(Flags.V) := _ccs(Flags.N) ^ _ccs(Flags.C)
+    }
+    is(ALU8Func.LSR) {
+      // 0IIIIIIII ->
+      // 00000000C
+
+      Cat(io.output, _ccs(Flags.C)) := Cat(B"0", io.input2)
+      _ccs(Flags.Z) := io.output === 0
+      _ccs(Flags.N) := io.output(7)
+      _ccs(Flags.V) := _ccs(Flags.N) ^ _ccs(Flags.C)
     }
     is(ALU8Func.CLC) {
       _ccs(Flags.C) := False
