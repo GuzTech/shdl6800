@@ -193,46 +193,71 @@ class ALU8 extends Component {
       // IIIIIIIIC ->
       // C00000000
 
-      Cat(_ccs(Flags.C), io.output) := Cat(io.input2, ccs(Flags.C))
+      val tmp   = Cat(io.input2, ccs(Flags.C))
+      val new_C = tmp.msb
+      val new_N = io.output(7)
+
+      io.output     := tmp(7 downto 0)
       _ccs(Flags.Z) := io.output === 0
-      _ccs(Flags.N) := io.output(7)
-      _ccs(Flags.V) := _ccs(Flags.N) ^ _ccs(Flags.C)
+      _ccs(Flags.N) := new_N
+      _ccs(Flags.V) := new_N ^ new_C
+      _ccs(Flags.C) := new_C
     }
     is(ALU8Func.ROR) {
       // CIIIIIIII ->
       // 00000000C
 
-      Cat(io.output, _ccs(Flags.C)) := Cat(ccs(Flags.C), io.input2)
+      val tmp   = Cat(ccs(Flags.C), io.input2)
+      val new_C = tmp.lsb
+      val new_N = io.output(7)
+
+      io.output     := tmp(8 downto 1)
       _ccs(Flags.Z) := io.output === 0
-      _ccs(Flags.N) := io.output(7)
-      _ccs(Flags.V) := _ccs(Flags.N) ^ _ccs(Flags.C)
+      _ccs(Flags.N) := new_N
+      _ccs(Flags.V) := new_N ^ new_C
+      _ccs(Flags.C) := new_C
     }
     is(ALU8Func.ASL) {
       // IIIIIIII0 ->
       // C00000000
 
-      Cat(_ccs(Flags.C), io.output) := Cat(io.input2, B"0")
+      val tmp   = Cat(io.input2, B"0")
+      val new_C = tmp.msb
+      val new_N = io.output(7)
+
+      io.output     := tmp(7 downto 0)
       _ccs(Flags.Z) := io.output === 0
-      _ccs(Flags.N) := io.output(7)
-      _ccs(Flags.V) := _ccs(Flags.N) ^ _ccs(Flags.C)
+      _ccs(Flags.N) := new_N
+      _ccs(Flags.V) := new_N ^ new_C
+      _ccs(Flags.C) := new_C
     }
     is(ALU8Func.ASR) {
       // 7IIIIIIII ->  ("7" is the repeat of input[7])
       // 00000000C
 
-      Cat(io.output, _ccs(Flags.C)) := Cat(io.input2(7), io.input2)
+      val tmp   = Cat(io.input2(7), io.input2)
+      val new_C = tmp.lsb
+      val new_N = io.output(7)
+
+      io.output     := tmp(8 downto 1)
       _ccs(Flags.Z) := io.output === 0
-      _ccs(Flags.N) := io.output(7)
-      _ccs(Flags.V) := _ccs(Flags.N) ^ _ccs(Flags.C)
+      _ccs(Flags.N) := new_N
+      _ccs(Flags.V) := new_N ^ new_C
+      _ccs(Flags.C) := new_C
     }
     is(ALU8Func.LSR) {
       // 0IIIIIIII ->
       // 00000000C
 
-      Cat(io.output, _ccs(Flags.C)) := Cat(B"0", io.input2)
+      val tmp   = Cat(B"0", io.input2)
+      val new_C = tmp.lsb
+      val new_N = io.output(7)
+
+      io.output     := tmp(8 downto 1)
       _ccs(Flags.Z) := io.output === 0
-      _ccs(Flags.N) := io.output(7)
-      _ccs(Flags.V) := _ccs(Flags.N) ^ _ccs(Flags.C)
+      _ccs(Flags.N) := new_N
+      _ccs(Flags.V) := new_N ^ new_C
+      _ccs(Flags.C) := new_C
     }
     is(ALU8Func.CLC) {
       _ccs(Flags.C) := False
