@@ -334,7 +334,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
   def ALU(func: SpinalEnumElement[ALU8Func.type], store: Boolean = true): Unit = {
     val b_bit = instr(6)
 
-    when(mode === ModeBits.DIRECT.asBits) {
+    when(mode === ModeBits.DIRECT) {
       val operand = mode_direct()
       read_byte(cycle = 1, addr = operand, comb_dest = Some(src8_2))
 
@@ -351,7 +351,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
         }
         end_instr(pc)
       }
-    }.elsewhen(mode === ModeBits.EXTENDED.asBits) {
+    }.elsewhen(mode === ModeBits.EXTENDED) {
       val operand = mode_ext()
       read_byte(cycle = 2, addr = operand, comb_dest = Some(src8_2))
 
@@ -369,7 +369,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
 
         end_instr(pc)
       }
-    }.elsewhen(mode === ModeBits.IMMEDIATE.asBits) {
+    }.elsewhen(mode === ModeBits.IMMEDIATE) {
       val operand = mode_immediate8()
 
       when(cycle === 2) {
@@ -387,7 +387,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
 
         end_instr(pc)
       }
-    }.elsewhen(mode === ModeBits.INDEXED.asBits) {
+    }.elsewhen(mode === ModeBits.INDEXED) {
       val operand = mode_indexed()
       read_byte(cycle = 3, addr = operand, comb_dest = Some(src8_2))
 
@@ -409,7 +409,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
   }
 
   def ALU2(func: SpinalEnumElement[ALU8Func.type], operand1: Bool, operand2: Bool, store: Boolean = true): Unit = {
-    when(mode === ModeBits.A.asBits) {
+    when(mode === ModeBits.A) {
       src8_1    := Mux(operand1, a, B(0))
       src8_2    := Mux(operand2, a, B(0))
       alu8_func := func
@@ -419,7 +419,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
       }
 
       end_instr(pc)
-    }.elsewhen(mode === ModeBits.B.asBits) {
+    }.elsewhen(mode === ModeBits.B) {
       src8_1    := Mux(operand1, b, B(0))
       src8_2    := Mux(operand2, b, B(0))
       alu8_func := func
@@ -429,7 +429,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
       }
 
       end_instr(pc)
-    }.elsewhen(mode === ModeBits.EXTENDED.asBits) {
+    }.elsewhen(mode === ModeBits.EXTENDED) {
       val operand = mode_ext()
       read_byte(cycle = 2, addr = operand, comb_dest = None)
 
@@ -462,7 +462,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
         }
         end_instr(pc)
       }
-    }.elsewhen(mode === ModeBits.INDEXED.asBits) {
+    }.elsewhen(mode === ModeBits.INDEXED) {
       val operand = mode_indexed()
       read_byte(cycle = 3, addr = operand, comb_dest = None)
 
@@ -561,13 +561,13 @@ case class Core(verification: Option[Verification] = None) extends Component {
   }
 
   def JMP(): Unit = {
-    when(mode === ModeBits.EXTENDED.asBits) {
+    when(mode === ModeBits.EXTENDED) {
       val operand = mode_ext()
 
       when(cycle === 2) {
         end_instr(operand)
       }
-    }.elsewhen(mode === ModeBits.INDEXED.asBits) {
+    }.elsewhen(mode === ModeBits.INDEXED) {
       val operand = mode_indexed()
 
       when(cycle === 3) {
@@ -583,7 +583,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
   def STA(): Unit = {
     val b_bit = instr(6)
 
-    when(mode === ModeBits.DIRECT.asBits) {
+    when(mode === ModeBits.DIRECT) {
       val operand = mode_direct()
 
       when(cycle === 1) {
@@ -607,7 +607,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
         alu8_func := ALU8Func.LD
         end_instr(pc)
       }
-    }.elsewhen(mode === ModeBits.EXTENDED.asBits) {
+    }.elsewhen(mode === ModeBits.EXTENDED) {
       val operand = mode_ext()
 
       when(cycle === 2) {
@@ -631,7 +631,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
         alu8_func := ALU8Func.LD
         end_instr(pc)
       }
-    }.elsewhen(mode === ModeBits.INDEXED.asBits) {
+    }.elsewhen(mode === ModeBits.INDEXED) {
       val operand = mode_indexed()
 
       when(cycle === 3) {

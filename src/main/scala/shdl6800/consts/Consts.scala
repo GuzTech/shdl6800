@@ -17,18 +17,15 @@
 
 package shdl6800.Consts
 
-import spinal.core.{SpinalEnum, SpinalEnumEncoding}
+import spinal.core._
 
-object ModeBits extends SpinalEnum {
-  val IMMEDIATE, A, DIRECT, B, INDEXED, EXTENDED = newElement()
-  defaultEncoding = SpinalEnumEncoding("staticEncoding")(
-    IMMEDIATE -> 0,
-    A         -> 0, // An alias for instructions in 0x40-0x7F
-    DIRECT    -> 1,
-    B         -> 1, // An alias for instructions in 0x40-0x7F
-    INDEXED   -> 2,
-    EXTENDED  -> 3
-  )
+object ModeBits {
+  val IMMEDIATE = 0
+  val A         = 0 // An alias for instructions in 0x40-0x7F
+  val DIRECT    = 1
+  val B         = 1 // An alias for instructions in 0x40-0x7F
+  val INDEXED   = 2
+  val EXTENDED  = 3
 }
 
 object Flags {

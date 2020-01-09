@@ -46,14 +46,14 @@ class AluVerification extends Verification {
     assert(data.post_sp === data.pre_sp)
     assert(data.addresses_written === 0)
 
-    when(mode === ModeBits.DIRECT.asBits) {
+    when(mode === ModeBits.DIRECT) {
       assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 2).asBits)
       assert(data.addresses_read === 2)
       assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
       assert(data.read_addr(1) === data.read_data(0).resize(16))
 
       input2 := data.read_data(1)
-    }.elsewhen(mode === ModeBits.EXTENDED.asBits) {
+    }.elsewhen(mode === ModeBits.EXTENDED) {
       assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 3).asBits)
       assert(data.addresses_read === 3)
       assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
@@ -61,13 +61,13 @@ class AluVerification extends Verification {
       assert(data.read_addr(2) === Cat(data.read_data(0), data.read_data(1)))
 
       input2 := data.read_data(2)
-    }.elsewhen(mode === ModeBits.IMMEDIATE.asBits) {
+    }.elsewhen(mode === ModeBits.IMMEDIATE) {
       assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 2).asBits)
       assert(data.addresses_read === 1)
       assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
 
       input2 := data.read_data(0)
-    }.elsewhen(mode === ModeBits.INDEXED.asBits) {
+    }.elsewhen(mode === ModeBits.INDEXED) {
       assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 2).asBits)
       assert(data.addresses_read === 2)
       assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
@@ -92,11 +92,12 @@ class Alu2Verification extends Verification {
     val actual_output = Bits(8 bits)
 
     // Give this a default value, or else the compiler detects a latch
+    actual_output := 0
 
     assert(data.post_x === data.pre_x)
     assert(data.post_sp === data.pre_sp)
 
-    when(mode === ModeBits.A.asBits) {
+    when(mode === ModeBits.A) {
       assert(data.post_b === data.pre_b)
       assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 1).asBits)
       assert(data.addresses_read === 0)
@@ -109,7 +110,7 @@ class Alu2Verification extends Verification {
       } else {
         assert(data.post_a === data.pre_a)
       }
-    }.elsewhen(mode === ModeBits.B.asBits) {
+    }.elsewhen(mode === ModeBits.B) {
       assert(data.post_a === data.pre_a)
       assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 1).asBits)
       assert(data.addresses_read === 0)
@@ -122,7 +123,7 @@ class Alu2Verification extends Verification {
       } else {
         assert(data.post_b === data.pre_b)
       }
-    }.elsewhen(mode === ModeBits.EXTENDED.asBits) {
+    }.elsewhen(mode === ModeBits.EXTENDED) {
       assert(data.post_a === data.pre_a)
       assert(data.post_b === data.pre_b)
       assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 3).asBits)
@@ -140,7 +141,7 @@ class Alu2Verification extends Verification {
       } else {
         assert(data.addresses_written === 0)
       }
-    }.elsewhen(mode === ModeBits.INDEXED.asBits) {
+    }.elsewhen(mode === ModeBits.INDEXED) {
       assert(data.post_a === data.pre_a)
       assert(data.post_b === data.pre_b)
       assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 2).asBits)

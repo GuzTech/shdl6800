@@ -36,14 +36,14 @@ class Formal_JMP extends Verification {
     assert(data.post_sp === data.pre_sp)
     assert(data.addresses_written === 0)
 
-    when(mode === ModeBits.EXTENDED.asBits) {
+    when(mode === ModeBits.EXTENDED) {
       assert(data.addresses_read === 2)
       assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
       assert(data.read_addr(1) === data.plus16(data.pre_pc.asSInt, 2).asBits)
       assert(data.post_pc === Cat(data.read_data(0), data.read_data(1)))
     }
 
-    when(mode === ModeBits.INDEXED.asBits) {
+    when(mode === ModeBits.INDEXED) {
       assert(data.addresses_read === 1)
       assert(data.read_addr(0) === data.plus16(data.pre_pc.asSInt, 1).asBits)
       assert(data.post_pc === data.plus16(data.pre_x.asSInt, data.read_data(0).resize(16).asSInt).asBits)

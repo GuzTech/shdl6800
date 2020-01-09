@@ -36,7 +36,7 @@ class Formal_STA extends Verification {
     assert(data.post_x === data.pre_x)
     assert(data.post_sp === data.pre_sp)
 
-    when(mode === ModeBits.DIRECT.asBits) {
+    when(mode === ModeBits.DIRECT) {
       assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 2).asBits)
 
       assert(data.addresses_read === 1)
@@ -45,7 +45,7 @@ class Formal_STA extends Verification {
       assert(data.addresses_written === 1)
       assert(data.write_addr(0) === data.read_data(0).resize(16))
       assert(data.write_data(0) === input)
-    }.elsewhen(mode === ModeBits.EXTENDED.asBits) {
+    }.elsewhen(mode === ModeBits.EXTENDED) {
       assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 3).asBits)
 
       assert(data.addresses_read === 2)
@@ -55,7 +55,7 @@ class Formal_STA extends Verification {
       assert(data.addresses_written === 1)
       assert(data.write_addr(0) === Cat(data.read_data(0), data.read_data(1)))
       assert(data.write_data(0) === input)
-    }.elsewhen(mode === ModeBits.INDEXED.asBits) {
+    }.elsewhen(mode === ModeBits.INDEXED) {
       assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 2).asBits)
 
       assert(data.addresses_read === 1)
