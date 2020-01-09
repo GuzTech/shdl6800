@@ -30,7 +30,7 @@
 
 package shdl6800
 
-import shdl6800.Consts.ModeBits
+import shdl6800.Consts.{Flags, ModeBits}
 import shdl6800.formal.{FormalData, Verification}
 import spinal.core._
 
@@ -155,7 +155,6 @@ case class Core(verification: Option[Verification] = None) extends Component {
   VMA            := 1
   cycle          := cycle + 1
   end_instr_addr := 0
-  x              := 0
   sp             := 0
 
   // Some common instruction decoding
@@ -276,6 +275,13 @@ case class Core(verification: Option[Verification] = None) extends Component {
   def execute(): Unit = {
     switch(instr) {
       is(B"0000_0001") { NOP() }                             // NOP
+      is(B"0000_0110") { TAP() }                             // TAP
+      is(B"0000_0111") { TPA() }                             // TPA
+      is(M"0000_100-") { IN_DE_X() }                         // INX/DEX
+      is(M"0000_101-") { CL_SE_V() }                         // CLV, SEV
+      is(M"0000_110-") { CL_SE_C() }                         // CLC, SEC
+      is(M"0000_111-") { CL_SE_I() }                         // CLI, SEI
+      is(M"0010_----") { BR() }                              // Branch instructions
       is(M"011-_1110") { JMP() }                             // JMP
       is(M"1---_0110") { ALU(ALU8Func.LD) }                  // LDA
       is(M"1---_0000") { ALU(ALU8Func.SUB) }                 // SUB
@@ -389,6 +395,68 @@ case class Core(verification: Option[Verification] = None) extends Component {
     }
   }
 
+  def BR(): Unit = {
+    val operand = mode_immediate8()
+
+    val relative = operand
+
+    /* At this point, pc is the instruction start + 2, so we just
+       add the signed relative offset to get the target. */
+    when(cycle === 2) {
+      tmp16 := (pc.asSInt + (relative.asSInt.resize(16))).asBits
+    }
+
+    when(cycle === 3) {
+      val take_branch = branch_check()
+      end_instr(Mux(take_branch, tmp16, pc))
+    }
+  }
+
+  // Clears of sets Carry.
+  def CL_SE_C(): Unit = {
+    when(cycle === 1) {
+      alu8_func := Mux(instr(0), ALU8Func.SEC, ALU8Func.CLC)
+      end_instr(pc)
+    }
+  }
+
+  // Clears of sets Overflow.
+  def CL_SE_V(): Unit = {
+    when(cycle === 1) {
+      alu8_func := Mux(instr(0), ALU8Func.SEV, ALU8Func.CLV)
+      end_instr(pc)
+    }
+  }
+
+  // Clears of sets Interrupt.
+  def CL_SE_I(): Unit = {
+    when(cycle === 1) {
+      alu8_func := Mux(instr(0), ALU8Func.SEI, ALU8Func.CLI)
+      end_instr(pc)
+    }
+  }
+
+  // Increments or decrements X.
+  def IN_DE_X(): Unit = {
+    val dec = instr(0)
+
+    when(cycle === 1) {
+      VMA  := 0
+      Addr := x
+      x    := Mux(dec, x.asSInt - 1, x.asSInt + 1).asBits
+    }
+
+    when(cycle === 2) {
+      VMA  := 0
+      Addr := x
+    }
+
+    when(cycle === 3) {
+      alu8_func := Mux(x === 0, ALU8Func.SEZ, ALU8Func.CLZ)
+      end_instr(pc)
+    }
+  }
+
   def JMP(): Unit = {
     when(mode === ModeBits.EXTENDED.asBits) {
       val operand = mode_ext()
@@ -485,6 +553,64 @@ case class Core(verification: Option[Verification] = None) extends Component {
         end_instr(pc)
       }
     }
+  }
+
+  // Transfer A to CCS.
+  def TAP(): Unit = {
+    when(cycle === 1) {
+      alu8_func := ALU8Func.TAP
+      src8_1    := a
+      end_instr(pc)
+    }
+  }
+
+  // Transfer CCS to A.
+  def TPA(): Unit = {
+    when(cycle === 1) {
+      alu8_func := ALU8Func.TPA
+      a         := alu8
+      end_instr(pc)
+    }
+  }
+
+  /* Generates logic for a 1-bit value for branching.
+   *
+   * Returns a Bool which is set if the branch should be
+   * take. The branch logic is determined by the instruction.
+   */
+  def branch_check(): Bool = {
+    val invert      = instr(0)
+    val cond        = Bool
+
+    switch(instr(3 downto 1)) {
+      is(B"000") { // BRA, BRN
+        cond := True
+      }
+      is(B"001") { // BHI, BLS
+        cond := !(ccs(Flags.C) | ccs(Flags.Z))
+      }
+      is(B"010") { // BCC, BCS
+        cond := !ccs(Flags.C)
+      }
+      is(B"011") { // BNE, BEQ
+        cond := !ccs(Flags.Z)
+      }
+      is(B"100") { // BVC, BVS
+        cond := !ccs(Flags.V)
+      }
+      is(B"101") { // BPL, BMI
+        cond := !ccs(Flags.N)
+      }
+      is(B"110") { // BGE, BLT
+        cond := !(ccs(Flags.N) ^ ccs(Flags.V))
+      }
+      is(B"111") { // BGT, BLE
+        cond := !(ccs(Flags.Z) | (ccs(Flags.N) ^ ccs(Flags.V)))
+      }
+    }
+
+    val take_branch = (cond ^ invert)
+    take_branch
   }
 
   /* Generates logic to get the 8-bit operand for immediate mode instructions.
@@ -647,9 +773,9 @@ object Core {
             val mem = Map(
               0xFFFE -> 0x12, // Reset vector high
               0xFFFF -> 0x34, // Reset vector low
-              0x1234 -> 0x7E, // JMP ext
-              0x1235 -> 0x12, // Address high
-              0x1236 -> 0x34, // Address low
+              0x1234 -> 0x20, // BRA 0x1234
+              0x1235 -> 0xFE,
+              0x1236 -> 0x01, // NOP
               0xA010 -> 0x01) // NOP
 
             for (i <- 0 to 16) {
@@ -666,7 +792,7 @@ object Core {
         import shdl6800.formal._
 
         // Create the output directory if it doesn't already exits
-        Process("mkdir src/main/scala/shdl6800/formal/sby/") !
+        Process("mkdir -p src/main/scala/shdl6800/formal/sby/") !
 
         val config = SpinalConfig(
           defaultConfigForClockDomains = ClockDomainConfig(
@@ -676,17 +802,22 @@ object Core {
         )
         config.includeFormal.generateSystemVerilog {
           val verification: Option[Verification] = args(0) match {
-            case "jmp" | "JMP" => Some(new Formal_JMP)
-            case "lda" | "LDA" => Some(new Formal_LDA)
-            case "add" | "ADD" => Some(new Formal_ADD)
-            case "sub" | "SUB" => Some(new Formal_SUB)
-            case "and" | "AND" => Some(new Formal_AND)
-            case "bit" | "BIT" => Some(new Formal_BIT)
-            case "cmp" | "CMP" => Some(new Formal_CMP)
-            case "eor" | "EOR" => Some(new Formal_EOR)
-            case "ora" | "ORA" => Some(new Formal_ORA)
-            case "sta" | "STA" => Some(new Formal_STA)
-            case _             => None
+            case "jmp"       | "JMP"       => Some(new Formal_JMP)
+            case "lda"       | "LDA"       => Some(new Formal_LDA)
+            case "add"       | "ADD"       => Some(new Formal_ADD)
+            case "sub"       | "SUB"       => Some(new Formal_SUB)
+            case "and"       | "AND"       => Some(new Formal_AND)
+            case "bit"       | "BIT"       => Some(new Formal_BIT)
+            case "cmp"       | "CMP"       => Some(new Formal_CMP)
+            case "eor"       | "EOR"       => Some(new Formal_EOR)
+            case "ora"       | "ORA"       => Some(new Formal_ORA)
+            case "sta"       | "STA"       => Some(new Formal_STA)
+            case "br"        | "BR"        => Some(new Formal_BR)
+            case "flag"      | "FLAG"      => Some(new Formal_FLAG)
+            case "tap"       | "TAP"       => Some(new Formal_TAP)
+            case "tpa"       | "TPA"       => Some(new Formal_TPA)
+            case "inc_dec_x" | "INC_DEC_X" => Some(new Formal_INC_DEC_X)
+            case _                         => None
           }
           val core: Core = new Core(verification) {
             if (verification.isDefined) {

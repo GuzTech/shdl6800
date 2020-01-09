@@ -22,7 +22,7 @@ import spinal.core._
 import shdl6800.Consts.Flags
 
 object ALU8Func extends SpinalEnum {
-  val NONE, LD, ADD, ADC, SUB, SBC, AND, EOR, ORA = newElement()
+  val NONE, LD, ADD, ADC, SUB, SBC, AND, EOR, ORA, CLV, SEV, CLC, SEC, TAP, TPA, CLI, SEI, CLZ, SEZ = newElement()
   defaultEncoding = SpinalEnumEncoding("staticEncoding") (
     NONE -> 0,
     LD   -> 1,
@@ -34,7 +34,17 @@ object ALU8Func extends SpinalEnum {
     // BIT is the same as AND, just don't store the output.
     // CMP is the same as SUB, just don't store the output.
     EOR  -> 7,
-    ORA  -> 8
+    ORA  -> 8,
+    CLV  -> 9,
+    SEV  -> 10,
+    CLC  -> 11,
+    SEC  -> 12,
+    TAP  -> 13,
+    TPA  -> 14,
+    CLI  -> 15,
+    SEI  -> 16,
+    CLZ  -> 17,
+    SEZ  -> 18
   )
 }
 
@@ -62,10 +72,11 @@ class ALU8 extends Component {
   val overflow = UInt(1 bit)
 
   // Default values so that the compiler doesn't complain about latches.
-  carry4   := 0
-  carry7   := 0
-  carry8   := 0
-  overflow := 0
+  carry4    := 0
+  carry7    := 0
+  carry8    := 0
+  overflow  := 0
+  io.output := 0
 
   switch(io.func) {
     is(ALU8Func.LD) {
@@ -100,7 +111,7 @@ class ALU8 extends Component {
       io.output(6 downto 4) := sum4_6(2 downto 0).asBits
       io.output(7)          := sum7(0)
 
-      overflow := carry7 ^ carry8
+      overflow      := carry7 ^ carry8
       _ccs(Flags.H) := carry4.asBool
       _ccs(Flags.N) := io.output(7)
       _ccs(Flags.Z) := io.output === 0
@@ -132,22 +143,52 @@ class ALU8 extends Component {
       _ccs(Flags.C) := ~carry8.asBool
     }
     is(ALU8Func.AND) {
-      io.output      := io.input1 & io.input2
+      io.output     := io.input1 & io.input2
       _ccs(Flags.Z) := io.output === 0
       _ccs(Flags.N) := io.output(7)
       _ccs(Flags.V) := False
     }
     is(ALU8Func.EOR) {
-      io.output      := io.input1 ^ io.input2
+      io.output     := io.input1 ^ io.input2
       _ccs(Flags.Z) := io.output === 0
       _ccs(Flags.N) := io.output(7)
       _ccs(Flags.V) := False
     }
     is(ALU8Func.ORA) {
-      io.output      := io.input1 | io.input2
+      io.output     := io.input1 | io.input2
       _ccs(Flags.Z) := io.output === 0
       _ccs(Flags.N) := io.output(7)
       _ccs(Flags.V) := False
+    }
+    is(ALU8Func.CLC) {
+      _ccs(Flags.C) := False
+    }
+    is(ALU8Func.SEC) {
+      _ccs(Flags.C) := True
+    }
+    is(ALU8Func.CLV) {
+      _ccs(Flags.V) := False
+    }
+    is(ALU8Func.SEV) {
+      _ccs(Flags.V) := True
+    }
+    is(ALU8Func.CLI) {
+      _ccs(Flags.I) := False
+    }
+    is(ALU8Func.SEI) {
+      _ccs(Flags.I) := True
+    }
+    is(ALU8Func.CLZ) {
+      _ccs(Flags.Z) := False
+    }
+    is(ALU8Func.SEZ) {
+      _ccs(Flags.Z) := True
+    }
+    is(ALU8Func.TAP) {
+      _ccs := io.input1 | B"1100_0000"
+    }
+    is(ALU8Func.TPA) {
+      io.output := ccs | B"1100_0000"
     }
     default {
       io.output := 0

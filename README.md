@@ -31,6 +31,15 @@ The following instructions have been implemented:
 - STA (with formal *sta*)
 - SUB (with formal *sub*)
 - SBC (with formal *sub*)
+- BR  (with formal *br*)
+- CLI (with formal *flag*)
+- SEI (with formal *flag*)
+- CLC (with formal *flag*)
+- SEC (with formal *flag*)
+- CLV (with formal *flag*)
+- SEV (with formal *flag*)
+- TAP (with formal *tap*)
+- TPA (with formal *tpa*)
 
 ## Generating Verilog
 
