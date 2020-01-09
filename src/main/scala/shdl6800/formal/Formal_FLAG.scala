@@ -20,16 +20,16 @@ package shdl6800.formal
 import shdl6800.Consts.{Flags, ModeBits}
 import spinal.core._
 
-object Formal_FLAG {
-  val CLV = B"0000_1010"
-  val SEV = B"0000_1011"
-  val CLC = B"0000_1100"
-  val SEC = B"0000_1101"
-  val CLI = B"0000_1110"
-  val SEI = B"0000_1111"
-}
-
 class Formal_FLAG extends Verification {
+  object Formal_FLAG {
+    val CLV = B"0000_1010"
+    val SEV = B"0000_1011"
+    val CLC = B"0000_1100"
+    val SEC = B"0000_1101"
+    val CLI = B"0000_1110"
+    val SEI = B"0000_1111"
+  }
+
   override def valid(instr: Bits): Bool = {
     instr === Formal_FLAG.CLV ||
     instr === Formal_FLAG.SEV ||
@@ -51,9 +51,13 @@ class Formal_FLAG extends Verification {
 
     assert(data.post_pc === data.plus16(data.pre_pc.asSInt, 1).asBits)
 
-    val c = data.pre_ccs(Flags.C)
-    val v = data.pre_ccs(Flags.V)
-    val i = data.pre_ccs(Flags.I)
+    val c = Bool
+    val v = Bool
+    val i = Bool
+
+    c := data.pre_ccs(Flags.C)
+    v := data.pre_ccs(Flags.V)
+    i := data.pre_ccs(Flags.I)
 
     switch(instr) {
       is(Formal_FLAG.CLV) {
