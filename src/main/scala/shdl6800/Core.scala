@@ -715,7 +715,7 @@ object Core {
             }
           }
 
-          core.setDefinitionName(args(0).toUpperCase())
+          core.setDefinitionName("Formal_" + args(0).toUpperCase())
           core
         }.printPruned()
       }

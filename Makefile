@@ -42,7 +42,7 @@ Formal_%: src/main/scala/shdl6800/formal/sby/%_bmc/status
 # Don't delete the status file if the user hits ctrl-C.
 .PRECIOUS: src/main/scala/shdl6800/formal/sby/%_bmc/status
 
-src/main/scala/shdl6800/formal/sby/%_bmc/status: src/main/scala/shdl6800/formal/sby/%.sby
+src/main/scala/shdl6800/formal/sby/%_bmc/status: src/main/scala/shdl6800/formal/sby/Formal_%.sby
 	$(info $(shell date '+%d %b %Y %H:%M:%S') Running formal verification on instruction '$*'...)
 	sby -f $< 2>&1 >/dev/null; if [ $$? -ne 0 ]; then \
 		echo `date '+%d %b %Y %H:%M:%S'` Formal verification FAILED for instruction \'$*\'; \
@@ -52,6 +52,6 @@ src/main/scala/shdl6800/formal/sby/%_bmc/status: src/main/scala/shdl6800/formal/
 src/main/scala/shdl6800/formal/sby/%.sby: src/main/scala/shdl6800/formal/sby/%.sv src/main/scala/shdl6800/formal/formal.sby
 	cat src/main/scala/shdl6800/formal/formal.sby | sed --expression='s#rel_file#$*#g' | sed --expression='s#abs_file#src/main/scala/shdl6800/formal/sby/$*#g' | sed --expression='s#top_entity#$*#g' > $@
 
-src/main/scala/shdl6800/formal/sby/%.sv: src/main/scala/shdl6800/formal/Formal_%.scala src/main/scala/shdl6800/Core.scala
+src/main/scala/shdl6800/formal/sby/Formal_%.sv: src/main/scala/shdl6800/formal/Formal_%.scala src/main/scala/shdl6800/Core.scala
 	mkdir -p src/main/scala/shdl6800/formal/sby
 	sbt "runMain shdl6800.Core $*"
