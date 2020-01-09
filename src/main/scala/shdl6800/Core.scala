@@ -291,7 +291,7 @@ case class Core(verification: Option[Verification] = None) extends Component {
       is(M"01--_1001") { ALU2(ALU8Func.ROL, False, True) }                 // ROL
       is(M"01--_1010") { ALU2(ALU8Func.DEC, False, True) }                 // DEC
       is(M"01--_1100") { ALU2(ALU8Func.INC, False, True) }                 // INC
-      is(M"01--_1101") { ALU2(ALU8Func.SUB, False, True, store = false) }  // TST
+      is(M"01--_1101") { ALU2(ALU8Func.SUB, True, False, store = false) }  // TST
       is(M"011-_1110") { JMP() }                                           // JMP
       is(M"01--_1111") { ALU2(ALU8Func.SUB, True, True) }                  // CLR
       is(M"1---_0110") { ALU(ALU8Func.LD) }                                // LDA
@@ -921,6 +921,11 @@ object Core {
             case "tpa"       | "TPA"       => Some(new Formal_TPA)
             case "inc_dec_x" | "INC_DEC_X" => Some(new Formal_INC_DEC_X)
             case "clr"       | "CLR"       => Some(new Formal_CLR)
+            case "com"       | "COM"       => Some(new Formal_COM)
+            case "inc_dec"   | "INC_DEC"   => Some(new Formal_INC_DEC)
+            case "neg"       | "NEG"       => Some(new Formal_NEG)
+            case "sh_rot"    | "SH_ROT"    => Some(new Formal_SH_ROT)
+            case "tst"       | "TST"       => Some(new Formal_TST)
             case _                         => None
           }
           val core: Core = new Core(verification) {
