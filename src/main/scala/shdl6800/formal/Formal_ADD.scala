@@ -49,16 +49,12 @@ class Formal_ADD extends AluVerification {
       carry_in := 0
     }
 
-    /* We have to extend the bits we're interested in with a zero bit,
-     * because in version 1.3.6 of SpinalHDL, the carry-out is not generated.
-     * The development version does have addition with carry-out, but we're
-     * sticking to the latest stable release. */
-    val inp1 = input1.resize(9).asUInt
-    val inp2 = input2.resize(9).asUInt
+    val inp1 = input1.asUInt
+    val inp2 = input2.asUInt
 
-    sum9 := (inp1 + inp2 + carry_in)
-    sum8 := (inp1(6 downto 0).resize(8) + inp2(6 downto 0).resize(8) + carry_in)
-    sum5 := (inp1(3 downto 0).resize(5) + inp2(3 downto 0).resize(5) + carry_in)
+    sum9 := (inp1 +^ inp2 + carry_in)
+    sum8 := (inp1(6 downto 0) +^ inp2(6 downto 0) + carry_in)
+    sum5 := (inp1(3 downto 0) +^ inp2(3 downto 0) + carry_in)
     assert(actual_output === sum9(7 downto 0).asBits)
 
     assertFlags(

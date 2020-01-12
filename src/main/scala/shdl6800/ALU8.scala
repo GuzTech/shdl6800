@@ -96,25 +96,18 @@ class ALU8 extends Component {
       _ccs(Flags.V) := False
     }
     is(ALU8Func.ADD, ALU8Func.ADC) {
-      /* Version 1.3.6 of SpinalHDL does not store the carry-out,
-       * so we have to extend by 1 bit by hand, or use the development
-       * version. Here we extend by hand. */
-      val in1_ext0_4 = io.input1(3 downto 0).resize(5).asUInt
-      val in2_ext0_4 = io.input2(3 downto 0).resize(5).asUInt
-      val in1_ext4_7 = io.input1(6 downto 4).resize(4).asUInt
-      val in2_ext4_7 = io.input2(6 downto 4).resize(4).asUInt
-      val in1_ext7_8 = io.input1(7).asBits.resize(2).asUInt
-      val in2_ext7_8 = io.input2(7).asBits.resize(2).asUInt
+      val in1 = io.input1.asUInt
+      val in2 = io.input2.asUInt
 
       val carry_in = Mux(io.func === ALU8Func.ADD, U"0", ccs(Flags.C).asUInt)
 
-      val sum0_3 = in1_ext0_4 + in2_ext0_4 + carry_in
+      val sum0_3 = in1(3 downto 0) +^ in2(3 downto 0) + carry_in
       carry4 := sum0_3.msb.asUInt
 
-      val sum4_6 = in1_ext4_7 + in2_ext4_7 + carry4
+      val sum4_6 = in1(6 downto 4) +^ in2(6 downto 4) + carry4
       carry7 := sum4_6.msb.asUInt
 
-      val sum7 = in1_ext7_8 + in2_ext7_8 + carry7
+      val sum7 = in1(7).asUInt +^ in2(7).asUInt + carry7
       carry8 := sum7.msb.asUInt
 
       io.output(3 downto 0) := sum0_3(3 downto 0).asBits
@@ -129,18 +122,15 @@ class ALU8 extends Component {
       _ccs(Flags.C) := carry8.asBool
     }
     is(ALU8Func.SUB, ALU8Func.SBC) {
-      /* Version 1.3.6 of SpinalHDL does not store the carry-out,
-       * so we have to extend by 1 bit by hand, or use the development
-       * version. Here we extend by hand. */
-      val in1_ext0_7 = io.input1(6 downto 0).resize(8).asUInt
-      val in1_ext7_8 = io.input1(7).asBits.resize(2).asUInt
+      val in1 = io.input1.asUInt
+      val in2 = io.input2.asUInt
 
       val carry_in = Mux(io.func === ALU8Func.SUB, U"0", ccs(Flags.C).asUInt)
 
-      val sum0_6 = in1_ext0_7 + (~io.input2(6 downto 0)).resize(8).asUInt + ~carry_in
+      val sum0_6 = in1(6 downto 0) +^ (~in2(6 downto 0)) + ~carry_in
       carry7 := sum0_6.msb.asUInt
 
-      val sum7 = in1_ext7_8 + (~io.input2(7)).asBits.resize(2).asUInt + carry7
+      val sum7 = in1(7).asUInt +^ (~in2(7)).asUInt + carry7
       carry8 := sum7.msb.asUInt
 
       io.output(6 downto 0) := sum0_6(6 downto 0).asBits
